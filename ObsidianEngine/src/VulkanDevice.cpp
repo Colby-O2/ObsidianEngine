@@ -279,7 +279,8 @@ namespace ObsidianEngine
 
 		VulkanPipelineBuilder builder(m_device);
 
-		VulkanPipeline pipeline = builder.setShaders(shaderModule, shaderModule)
+		VulkanPipeline pipeline = builder
+			.setShaders(shaderModule, shaderModule)
 			.setTopology(vk::PrimitiveTopology::eTriangleList)
 			.setRasterizer(vk::PolygonMode::eFill, vk::CullModeFlagBits::eBack, vk::FrontFace::eClockwise)
 			.setColorBlend(false)

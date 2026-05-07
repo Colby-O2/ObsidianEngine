@@ -9,7 +9,7 @@ file(GLOB_RECURSE SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
 )
 
-add_executable(ObsidianEngine ${SOURCES} "include/Window.h" "src/Window.cpp" "src/Application.cpp" "include/VulkanPipeline.h")
+add_executable(ObsidianEngine ${SOURCES} "include/Window.h" "src/Window.cpp" "src/Application.cpp" "include/VulkanPipeline.h" "include/Vector.h")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET ObsidianEngine PROPERTY CXX_STANDARD 20)

@@ -8,3 +8,7 @@ endif()
 project ("ObsidianEngine")
 
 add_subdirectory ("ObsidianEngine")
+
+set(CMAKE_C_STANDARD 20)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
