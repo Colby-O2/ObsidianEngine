@@ -24,25 +24,28 @@ namespace ObsidianEngine
 	using Vector3 = detail::Vector<float, 3>;
 	using Vector4 = detail::Vector<float, 4>;
 
+	using Vector2Int = detail::Vector<int, 2>;
+	using Vector3Int = detail::Vector<int, 3>;
+	using Vector4Int = detail::Vector<int, 4>;
+
 	namespace detail
 	{
 		constexpr size_t swizzleIndex(char c)
 		{
 			switch (c)
 			{
-			case 'x': return 0;
-			case 'y': return 1;
-			case 'z': return 2;
-			case 'w': return 3;
+				case 'x': return 0;
+				case 'y': return 1;
+				case 'z': return 2;
+				case 'w': return 3;
 
-			case 'r': return 0;
-			case 'g': return 1;
-			case 'b': return 2;
-			case 'a': return 3;
-
-			default:
-				throw "Invaild swizzle character!";
+				case 'r': return 0;
+				case 'g': return 1;
+				case 'b': return 2;
+				case 'a': return 3;
 			}
+
+			return static_cast<size_t>(c - '0');
 		}
 
 		template<size_t...>
@@ -63,17 +66,18 @@ namespace ObsidianEngine
 
 			operator Vector<T, Size>() const
 			{
+				return eval();
+			}
+
+			Vector<T, Size> eval() const
+			{
 				return Vector<T, Size>{ data[Indices]... };
 			}
 
-			Vector<T, Size> ToVector() const
-			{
-				return static_cast<Vector<T, Size>>(*this);
-			}
 #pragma region Arithmetic Operators
 			SwizzleProxy& operator=(const Vector<T, Size>& rhs)
 			{
-				static_assert(!HasDuplicates<Indices...>::value, "Cannot assign to swizzle with duplicate components");
+				static_assert(!HasDuplicates<Indices...>::value, "Cannot assign to swizzle with duplicate components!");
 
 				size_t i = 0;
 				((data[Indices] = rhs[i++]), ...);
@@ -83,12 +87,14 @@ namespace ObsidianEngine
 
 			T& operator[](size_t i)
 			{
+				assert(i < Size && "Vector index out of range!");
 				constexpr size_t lookup[] = { Indices... };
 				return data[lookup[i]];
 			}
 
 			const T& operator[](size_t i) const
 			{
+				assert(i < Size && "Vector index out of range!");
 				constexpr size_t lookup[] = { Indices... };
 				return data[lookup[i]];
 			}
@@ -96,7 +102,7 @@ namespace ObsidianEngine
 
 			friend std::ostream& operator<<(std::ostream& os, const SwizzleProxy& v)
 			{
-				os << v.ToVector();
+				os << v.eval();
 				return os;
 			}
 		};
@@ -120,22 +126,61 @@ namespace ObsidianEngine
 			auto swizzle()
 			{
 				constexpr size_t len = sizeof(Str.value) - 1;
-				static_assert(len >= 1 && len <= 4);
-
+				static_assert(
+					[]<size_t... I>(std::index_sequence<I...>)
+					{
+						return ((swizzleIndex(Str.value[I]) < N) && ...);
+					}
+					(std::make_index_sequence<len>{}),
+					"Swizzle index out of range!"
+				);
 				return makeSwizzle<Str>(std::make_index_sequence<len>{});
 			}
 
-#pragma region Arithmetic Operators
+			template<StringLiteral Str, typename... Ts>
+			Derived set(Ts... vals) const
+			{
+				constexpr size_t len = sizeof(Str.value) - 1;
+				static_assert(len == sizeof...(Ts), "Argument count must match swizzle length!");
+				static_assert(N <= 4, "Not implemented for vectors where N > 4!");
+				static_assert(
+					[]<size_t... I>(std::index_sequence<I...>)
+					{
+						return ((swizzleIndex(Str.value[I]) < N) && ...);
+					}
+					(std::make_index_sequence<len>{}),
+					"Can't set an index out of range!"
+				);
+				static_assert(
+					[]<size_t... Indices>(std::index_sequence<Indices...>)
+					{
+						return !HasDuplicates<
+							swizzleIndex(Str.value[Indices])...
+						>::value;
+					}
+					(std::make_index_sequence<len>{}), 
+					"Cannot set duplicate components!"
+				);
+
+				Derived result{ self() };
+				size_t i = 0;
+				((result[swizzleIndex(Str.value[i++])] = static_cast<T>(vals)), ...);
+				return result;
+			}
+
 			T& operator[](size_t i)
 			{
+				assert(i < N && "Vector index out of range!");
 				return self().data[i];
 			}
 
 			const T& operator[](size_t i) const
 			{
+				assert(i < N && "Vector index out of range!");
 				return self().data[i];
 			}
 
+#pragma region Arithmetic Operators
 			Derived operator+(const Derived& rhs) const
 			{
 				Derived result{};
@@ -407,10 +452,11 @@ namespace ObsidianEngine
 			}
 		};
 
-		template<typename T, size_t N>
-		Vector<T, N> operator*(T scalar, const Vector<T, N>& v)
+		template<typename T, typename R, size_t N>
+		Vector<R, N> operator*(T scalar, const Vector<R, N>& v)
 		{
-			return v * scalar;
+			static_assert(std::is_arithmetic_v<T>);
+			return v * static_cast<R>(scalar);
 		}
 
 		template<typename T>
@@ -424,6 +470,8 @@ namespace ObsidianEngine
 			};
 
 			constexpr Vector() : data{ 0 } {}
+
+			constexpr Vector(const Vector& v) : data{v[0]} {}
 
 			constexpr Vector(T x_) : data{ x_ } {}
 		};
@@ -440,6 +488,8 @@ namespace ObsidianEngine
 
 			constexpr Vector() : data{ 0,0 } {}
 
+			constexpr Vector(const Vector& v) : data{ v[0], v[1] } {}
+
 			constexpr Vector(T x_, T y_) : data{ x_, y_ } {}
 		};
 
@@ -455,7 +505,24 @@ namespace ObsidianEngine
 
 			constexpr Vector() : data{ 0,0,0 } {}
 
+			constexpr Vector(const Vector& v) : data{ v[0], v[1], v[2] } {}
+
 			constexpr Vector(T x_, T y_, T z_) : data{ x_, y_, z_ } {}
+
+			Vector<T, 3> cross(const  Vector<T, 3>& rhs)
+			{
+				return Vector<T, 3>::cross(*this, rhs);
+			}
+
+			static Vector<T, 3> cross(const  Vector<T, 3>& a, const  Vector<T, 3>& b)
+			{
+				return
+				{
+					a.y * b.z - a.z * b.y,
+					a.z * b.x - a.x * b.z,
+					a.x * b.y - a.y * b.x
+				};
+			}
 		};
 
 		template<typename T>
@@ -470,7 +537,56 @@ namespace ObsidianEngine
 
 			constexpr Vector() : data{ 0,0,0,0 } {}
 
+			constexpr Vector(const Vector& v) : data{ v[0], v[1], v[2], v[3] } {}
+
 			constexpr Vector(T x_, T y_, T z_, T w_) : data{ x_, y_, z_, w_ } {}
+		};
+
+		template<typename T, size_t N>
+		struct Vector : VectorBase<Vector<T, N>, T, N>
+		{
+			T data[N];
+
+			constexpr Vector() : data{} 
+			{
+				for (size_t i = 0; i < N; i++)
+				{
+					data[i] = 0;
+				}
+			}
+
+			constexpr Vector(const Vector& v) : data{} 
+			{
+				for (size_t i = 0; i < N; i++)
+				{
+					data[i] = v[i];
+				}
+			}
+
+			constexpr Vector(const T(&arr)[N])
+			{
+				for (size_t i = 0; i < N; i++)
+				{
+					data[i] = arr[i];
+				}
+			}
+
+			constexpr Vector(std::initializer_list<T> init)
+			{
+				size_t i = 0;
+				for (T v : init)
+				{
+					if (i < N)
+					{
+						data[i++] = v;
+					}
+				}
+
+				for (; i < N; i++)
+				{
+					data[i] = T{};
+				}
+			}
 		};
 	}
 }
