@@ -1,5 +1,5 @@
-#include "../include/VulkanPipelineBuilder.h"
-#include "../include/VulkanPipeline.h"
+#include "VulkanPipelineBuilder.h"
+#include "VulkanPipeline.h"
 
 namespace ObsidianEngine
 {
@@ -94,7 +94,15 @@ namespace ObsidianEngine
 
         vk::PipelineColorBlendStateCreateInfo colorBlending{ .logicOpEnable = vk::False, .logicOp = vk::LogicOp::eCopy, .attachmentCount = 1, .pAttachments = &m_colorBlendAttachment };
 
-        vk::PipelineVertexInputStateCreateInfo vertexInput{};
+        vk::VertexInputBindingDescription bindingDescription = Vertex::getBindingDescription();
+        std::array<vk::VertexInputAttributeDescription, 2> attributeDescriptions = Vertex::getAttributeDescriptions();
+
+        vk::PipelineVertexInputStateCreateInfo vertexInput{
+            .vertexBindingDescriptionCount = 1,
+            .pVertexBindingDescriptions = &bindingDescription,
+            .vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size()),
+            .pVertexAttributeDescriptions = attributeDescriptions.data()
+        };
 
         vk::GraphicsPipelineCreateInfo pipelineInfo{
                 .stageCount = static_cast<uint32_t>(m_shaderStages.size()),

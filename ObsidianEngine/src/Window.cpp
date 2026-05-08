@@ -1,5 +1,5 @@
-#include "../include/Window.h"
-#include "../include/Application.h"
+#include "Window.h"
+#include "Application.h"
 
 #include <stdexcept>
 

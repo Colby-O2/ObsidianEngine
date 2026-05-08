@@ -1,8 +1,8 @@
 #ifndef APPLICATION_H_
 #define APPLICATION_H_
 
-#include "../include/Window.h"
-#include "../include/RenderDevice.h"
+#include "Window.h"
+#include "RenderDevice.h"
 
 #include <iostream>
 #include <stdexcept>
@@ -11,8 +11,8 @@
 
 namespace ObsidianEngine
 {
-#define WIDTH 800
-#define HEIGHT 600
+	constexpr uint32_t WIDTH = 800;
+	constexpr uint32_t HEIGHT = 600;
 
 	class Application {
 	public:

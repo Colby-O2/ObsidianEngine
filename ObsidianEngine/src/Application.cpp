@@ -1,6 +1,5 @@
-#include "../include/Application.h"
-
-#include "../include/VulkanDevice.h"
+#include "Application.h"
+#include "VulkanDevice.h"
 
 void ObsidianEngine::Application::run()
 {

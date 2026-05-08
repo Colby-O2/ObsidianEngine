@@ -18,6 +18,7 @@ endif()
 set(SLANG_DIR "C:/VulkanSDK/1.4.341.1")
 
 target_include_directories(ObsidianEngine PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${SLANG_DIR}/Include
 )
 

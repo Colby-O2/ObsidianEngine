@@ -10,7 +10,7 @@
 #include <cmath>
 #include <algorithm>
 
-#include "../include/StringLiteral.h"
+#include "StringLiteral.h"
 
 namespace ObsidianEngine
 {

@@ -1,9 +1,10 @@
 #ifndef VULKAN_DEVICE_H_
 #define VULKAN_DEVICE_H_
 
-#include "../include/RenderDevice.h"
-#include "../include/VulkanSwapchain.h"
-#include "../include/VulkanPipeline.h"
+#include "RenderDevice.h"
+#include "VulkanSwapchain.h"
+#include "VulkanPipeline.h"
+#include "Vertex.h"
 
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
@@ -33,6 +34,11 @@ namespace ObsidianEngine
 #define ENABLE_VAILDATION_LAYERS true
 #endif
 
+    const std::vector<Vertex> vertices = {
+        {{0.0f, -0.5f}, {1.0f, 1.0f, 1.0f}},
+        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}
+    };
 
     class VulkanDevice : public IRenderDevice {
     public:
@@ -50,8 +56,11 @@ namespace ObsidianEngine
         vk::raii::PhysicalDevice             m_physicalDevice = nullptr;
         vk::raii::Device                     m_device = nullptr;
         vk::raii::Queue                      m_graphicsQueue = nullptr;
+        vk::raii::Queue                      m_transferQueue = nullptr;
         vk::raii::DebugUtilsMessengerEXT     m_debugMessenger = nullptr;
         vk::raii::SurfaceKHR                 m_surface = nullptr;
+        vk::raii::Buffer                     m_vertexBuffer = nullptr;
+        vk::raii::DeviceMemory               m_vertexBufferMemory = nullptr;
 
         std::unique_ptr<VulkanSwapchain>     m_swapchain;
 
@@ -67,7 +76,8 @@ namespace ObsidianEngine
 
 
         uint32_t                            m_currentImageIndex = 0;
-        uint32_t                            m_queueIndex = ~0;
+        uint32_t                            m_graphicsQueueIndex = ~0;
+        uint32_t                            m_transferQueueIndex = ~0;
 
         void createInstance();
         void setupDebugMessenger();
@@ -79,6 +89,11 @@ namespace ObsidianEngine
         void createSyncObjects();
         void createCommandPool();
         void createCommandBuffers();
+        void createVertexBuffer();
+        
+        uint32_t findQueueFamilyIndex(const vk::raii::PhysicalDevice& physicalDevice, const std::vector<vk::QueueFamilyProperties>& queueFamilies, vk::QueueFlags requiredFlags, vk::QueueFlags excludedFlagss = {}, vk::raii::SurfaceKHR* surface = nullptr, bool requirePresent = false);
+
+        uint32_t findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties);
 
         void recordCommandBuffer(uint32_t imageIndex);
 

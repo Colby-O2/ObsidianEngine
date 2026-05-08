@@ -1,10 +1,9 @@
-#include "../include/VulkanDevice.h"
-#include "../include/Window.h"
-
-#include "../include/ShaderCompiler.h"
+#include "VulkanDevice.h"
+#include "Window.h"
+#include "ShaderCompiler.h"
+#include "VulkanPipelineBuilder.h"
 
 #include <algorithm>
-#include "../include/VulkanPipelineBuilder.h"
 
 namespace ObsidianEngine
 {
@@ -21,6 +20,7 @@ namespace ObsidianEngine
 
 		createGraphicsPipeline();
 		createCommandPool();
+		createVertexBuffer();
 		createCommandBuffers();
 
 		createSyncObjects();
@@ -210,23 +210,77 @@ namespace ObsidianEngine
 		m_physicalDevice = *devIter;
 	}
 
+	uint32_t VulkanDevice::findQueueFamilyIndex(const vk::raii::PhysicalDevice& physicalDevice, const std::vector<vk::QueueFamilyProperties>& queueFamilies, vk::QueueFlags requiredFlags, vk::QueueFlags excludedFlagss, vk::raii::SurfaceKHR* surface, bool requirePresent)
+	{
+		for (uint32_t qfpIndex = 0; qfpIndex < queueFamilies.size(); qfpIndex++)
+		{
+			const auto& qf = queueFamilies[qfpIndex];
+
+			if ((qf.queueFlags & requiredFlags) != requiredFlags)
+			{
+				continue;
+			}
+
+			if ((qf.queueFlags & excludedFlagss) != vk::QueueFlags{})
+			{
+				continue;
+			}
+
+			if (requirePresent)
+			{
+				if (!surface || !physicalDevice.getSurfaceSupportKHR(qfpIndex, *surface))
+				{
+					continue;
+				}
+			}
+
+			return qfpIndex;
+		}
+
+		return ~0u;
+	}
+
 	void VulkanDevice::createLogicalDevice()
 	{
 		std::vector<vk::QueueFamilyProperties> queueFamilyProperties = m_physicalDevice.getQueueFamilyProperties();
 
-		m_queueIndex = ~0;
-		for (uint32_t qfpIndex = 0; qfpIndex < queueFamilyProperties.size(); qfpIndex++)
-		{
-			if (queueFamilyProperties[qfpIndex].queueFlags & vk::QueueFlagBits::eGraphics && m_physicalDevice.getSurfaceSupportKHR(qfpIndex, *m_surface))
-			{
-				m_queueIndex = qfpIndex;
-				break;
-			}
-		}
+		m_graphicsQueueIndex = findQueueFamilyIndex(
+			m_physicalDevice,
+			queueFamilyProperties,
+			vk::QueueFlagBits::eGraphics,
+			{},
+			&m_surface,
+			true
+		);
 
-		if (m_queueIndex == ~0)
+		m_transferQueueIndex = findQueueFamilyIndex(
+			m_physicalDevice,
+			queueFamilyProperties,
+			vk::QueueFlagBits::eTransfer,
+			vk::QueueFlagBits::eGraphics,
+			nullptr,
+			false
+		);
+
+		if (m_graphicsQueueIndex == ~0u) 
 		{
 			throw std::runtime_error("Could not find a queue for graphics and presentation!");
+		}
+
+		if (m_transferQueueIndex == ~0u)
+		{
+			std::cout << "Dedicated queue is not supported!" << std::endl;
+
+			m_transferQueueIndex = findQueueFamilyIndex(
+				m_physicalDevice,
+				queueFamilyProperties,
+				vk::QueueFlagBits::eTransfer
+			);
+
+			if (m_transferQueueIndex == ~0u)
+			{
+				throw std::runtime_error("Could not find a queue for transfer!");
+			}
 		}
 
 		vk::StructureChain<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features, vk::PhysicalDeviceVulkan13Features, vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT> featureChain = {
@@ -239,7 +293,7 @@ namespace ObsidianEngine
 		float queuePriority = 0.5f;
 		vk::DeviceQueueCreateInfo deviceQueueCreateInfo
 		{
-			.queueFamilyIndex = m_queueIndex,
+			.queueFamilyIndex = m_graphicsQueueIndex,
 			.queueCount = 1,
 			.pQueuePriorities = &queuePriority
 		};
@@ -254,7 +308,7 @@ namespace ObsidianEngine
 		};
 
 		m_device = vk::raii::Device(m_physicalDevice, deviceCreateInfo);
-		m_graphicsQueue = vk::raii::Queue(m_device, m_queueIndex, 0);
+		m_graphicsQueue = vk::raii::Queue(m_device, m_graphicsQueueIndex, 0);
 	}
 
 	void VulkanDevice::createSwapChain(Window* window)
@@ -292,8 +346,48 @@ namespace ObsidianEngine
 	void VulkanDevice::createCommandPool()
 	{
 		vk::CommandPoolCreateInfo poolInfo{ .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-										   .queueFamilyIndex = m_queueIndex };
+										   .queueFamilyIndex = m_graphicsQueueIndex };
 		m_commandPool = vk::raii::CommandPool(m_device, poolInfo);
+	}
+
+	void VulkanDevice::createVertexBuffer()
+	{
+		vk::BufferCreateInfo bufferInfo{
+			.size = sizeof(vertices[0]) * vertices.size(),
+			.usage = vk::BufferUsageFlagBits::eVertexBuffer,
+			.sharingMode = vk::SharingMode::eExclusive
+		};
+
+		m_vertexBuffer = vk::raii::Buffer(m_device, bufferInfo);
+
+		vk::MemoryRequirements memRequirements = m_vertexBuffer.getMemoryRequirements();
+
+		vk::MemoryAllocateInfo memoryAllocateInfo{
+			.allocationSize = memRequirements.size,
+			.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)
+		};
+
+		m_vertexBufferMemory = vk::raii::DeviceMemory(m_device, memoryAllocateInfo);
+		m_vertexBuffer.bindMemory(*m_vertexBufferMemory, 0);
+
+		void* data = m_vertexBufferMemory.mapMemory(0, bufferInfo.size);
+		memcpy(data, vertices.data(), bufferInfo.size);
+		m_vertexBufferMemory.unmapMemory();
+	}
+
+	uint32_t VulkanDevice::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties)
+	{
+		vk::PhysicalDeviceMemoryProperties memProperties = m_physicalDevice.getMemoryProperties();
+
+		for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++)
+		{
+			if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
+			{
+				return i;
+			}
+		}
+
+		throw std::runtime_error("Failed to find suitable memory type!");
 	}
 
 	void VulkanDevice::createCommandBuffers()
@@ -405,12 +499,14 @@ namespace ObsidianEngine
 
 	    m_pipeline->bind(commandBuffer, vk::PipelineBindPoint::eGraphics);
 
+		commandBuffer.bindVertexBuffers(0, *m_vertexBuffer, { 0 });
+
 		vk::Viewport viewport{ 0.0f, 0.0f, (float)m_swapchain->getExtent().width, (float)m_swapchain->getExtent().height, 0.0f, 1.0f };
 		vk::Rect2D scissor{ {0, 0}, m_swapchain->getExtent() };
 		commandBuffer.setViewport(0, viewport);
 		commandBuffer.setScissor(0, scissor);
 
-		commandBuffer.draw(3, 1, 0, 0);
+		commandBuffer.draw(static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 
 		commandBuffer.endRendering();
 

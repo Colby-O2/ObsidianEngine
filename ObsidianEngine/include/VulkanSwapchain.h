@@ -1,7 +1,7 @@
 #ifndef VULKAN_SWAPCHAIN_H_
 #define VULKAN_SWAPCHAIN_H_
 
-#include "../include/Window.h"
+#include "Window.h"
 
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>

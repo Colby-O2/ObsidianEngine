@@ -1,4 +1,4 @@
-#include "../include/ShaderCompiler.h"
+#include "ShaderCompiler.h"
 
 namespace ObsidianEngine
 {
