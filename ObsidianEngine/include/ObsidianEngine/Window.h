@@ -3,6 +3,7 @@
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+
 #include <string>
 
 namespace ObsidianEngine
@@ -23,6 +24,7 @@ namespace ObsidianEngine
 		bool shouldClose() const { return glfwWindowShouldClose(m_window); }
 		void pollEvents() const { glfwPollEvents(); }
 		void waitEvents() const { glfwWaitEvents(); }
+		float getTime() const { return static_cast<float>(glfwGetTime()); }
 
 		GLFWwindow* getNativeWindow() const { return m_window; }
 

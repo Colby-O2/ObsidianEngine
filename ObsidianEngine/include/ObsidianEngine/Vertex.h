@@ -13,6 +13,9 @@ namespace ObsidianEngine
         Vector2 pos;
         Vector3 color;
 
+        Vertex() = default;
+        Vertex(Vector2 _pos, Vector3 _color) : pos(_pos), color(_color) {}
+
         static vk::VertexInputBindingDescription getBindingDescription()
         {
             return { .binding = 0, .stride = sizeof(Vertex), .inputRate = vk::VertexInputRate::eVertex };

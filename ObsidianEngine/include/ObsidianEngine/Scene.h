@@ -1,0 +1,54 @@
+#ifndef SCENE_H_
+#define SCENE_H_
+
+#include "Entity.h"
+#include "View.h"
+#include "Registry.h"
+#include "System.h" 
+#include <vector>
+#include <memory>
+#include <string>
+
+namespace ObsidianEngine
+{
+    class Scene 
+    {
+    public:
+        Scene() = default;
+        ~Scene() = default;
+
+        EntityID createEntity() 
+        {
+            return m_registry.create();
+        }
+
+        void destroyEntity(EntityID entity) 
+        {
+            m_registry.destroy(entity);
+        }
+
+        template<typename T, typename... Args>
+        void addSystem(Args&&... args) 
+        {
+            m_systems.emplace_back(std::make_unique<T>(std::forward<Args>(args)...));
+        }
+
+        void onUpdate(float dt) 
+        {
+            for (auto& system : m_systems) 
+            {
+                system->update(m_registry, dt);
+            }
+        }
+
+        Registry& getRegistry() 
+        { 
+            return m_registry; 
+        }
+
+    private:
+        Registry m_registry;
+        std::vector<std::unique_ptr<ISystem>> m_systems;
+    };
+}
+#endif

@@ -3,6 +3,7 @@
 
 #include "Window.h"
 #include "RenderDevice.h"
+#include "Scene.h"
 
 #include <iostream>
 #include <stdexcept>
@@ -16,10 +17,27 @@ namespace ObsidianEngine
 
 	class Application {
 	public:
+		Application() = default;
+		virtual ~Application() = default;
+
+		Application(const Application&) = delete;
+		Application& operator=(const Application&) = delete;
+
 		void run();
+		void close() { m_running = false; }
+
 		void setFrameBufferRsizedFlag();
 
+	protected:
+		std::shared_ptr<Scene> m_activeScene;
+
+		virtual void onStartup() {}
+		virtual void onUpdate() {}
+		virtual void onEvent() {}
+
 	private:
+		bool m_running = true;
+		float m_lastFrameTime = 0.0f;
 
 		std::unique_ptr<Window> m_window;
 		std::unique_ptr<IRenderDevice> m_renderDevice;

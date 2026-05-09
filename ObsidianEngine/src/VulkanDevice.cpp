@@ -4,9 +4,111 @@
 #include "VulkanPipelineBuilder.h"
 
 #include <algorithm>
+#include <set>
 
 namespace ObsidianEngine
 {
+	uint32_t VulkanDevice::uploadMeshData(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices)
+	{
+		vk::DeviceSize vSize = sizeof(Vertex) * vertices.size();
+		auto [vStaging, vStagingMem] = createBuffer(vSize,
+			vk::BufferUsageFlagBits::eTransferSrc,
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+		void* vPtr = vStagingMem.mapMemory(0, vSize);
+		memcpy(vPtr, vertices.data(), vSize);
+		vStagingMem.unmapMemory();
+
+		auto [vBuffer, vBufferMem] = createBuffer(vSize,
+			vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+			vk::MemoryPropertyFlagBits::eDeviceLocal);
+		copyBuffer(vStaging, vBuffer, vSize);
+
+		vk::DeviceSize iSize = sizeof(uint16_t) * indices.size();
+		auto [iStaging, iStagingMem] = createBuffer(iSize,
+			vk::BufferUsageFlagBits::eTransferSrc,
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+		void* iPtr = iStagingMem.mapMemory(0, iSize);
+		memcpy(iPtr, indices.data(), iSize);
+		iStagingMem.unmapMemory();
+
+		auto [iBuffer, iBufferMem] = createBuffer(iSize,
+			vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
+			vk::MemoryPropertyFlagBits::eDeviceLocal);
+		copyBuffer(iStaging, iBuffer, iSize);
+
+		m_meshCache.push_back({
+			std::move(vBuffer),
+			std::move(vBufferMem),
+			vSize,
+
+			std::move(iBuffer),
+			std::move(iBufferMem),
+			iSize,
+
+			static_cast<uint32_t>(indices.size())
+		});
+
+		return static_cast<uint32_t>(m_meshCache.size() - 1);
+	}
+
+	void VulkanDevice::updateDynamicMesh(uint32_t gpuId, const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices)
+	{
+		GPUMeshResource& resource = m_meshCache[gpuId];
+		vk::DeviceSize vReqSize = sizeof(Vertex) * vertices.size();
+		vk::DeviceSize iReqSize = sizeof(uint16_t) * indices.size();
+
+		if (vReqSize > resource.vertexBufferSize || iReqSize > resource.indexBufferSize)
+		{
+			m_device.waitIdle();
+
+			vk::DeviceSize newVSize = static_cast<vk::DeviceSize>(vReqSize * 1.5f);
+			vk::DeviceSize newISize = static_cast<vk::DeviceSize>(iReqSize * 1.5f);
+
+			auto [newVBuf, newVMem] = createBuffer(newVSize,
+				vk::BufferUsageFlagBits::eVertexBuffer,
+				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+			auto [newIBuf, newIMem] = createBuffer(newISize,
+				vk::BufferUsageFlagBits::eIndexBuffer,
+				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+			resource.vertexBuffer = std::move(newVBuf);
+			resource.vertexMemory = std::move(newVMem);
+			resource.vertexBufferSize = newVSize;
+
+			resource.indexBuffer = std::move(newIBuf);
+			resource.indexMemory = std::move(newIMem);
+			resource.indexBufferSize = newISize;
+		}
+
+		void* vPtr = resource.vertexMemory.mapMemory(0, vReqSize);
+		memcpy(vPtr, vertices.data(), vReqSize);
+		resource.vertexMemory.unmapMemory();
+
+		void* iPtr = resource.indexMemory.mapMemory(0, iReqSize);
+		memcpy(iPtr, indices.data(), iReqSize);
+		resource.indexMemory.unmapMemory();
+
+		resource.indexCount = static_cast<uint32_t>(indices.size());
+	}
+
+	MeshRenderData VulkanDevice::getGPUBufferData(uint32_t gpuId)
+	{
+		if (gpuId >= m_meshCache.size()) {
+			throw std::runtime_error("Invalid GPU Mesh ID requested!");
+		}
+
+		const auto& resource = m_meshCache[gpuId];
+
+		return {
+			*resource.vertexBuffer,
+			*resource.indexBuffer,
+			resource.indexCount
+		};
+	}
+
 	void VulkanDevice::init(Window* window)
 	{
 		createInstance();
@@ -21,6 +123,7 @@ namespace ObsidianEngine
 		createGraphicsPipeline();
 		createCommandPool();
 		createVertexBuffer();
+		createIndexBuffer();
 		createCommandBuffers();
 
 		createSyncObjects();
@@ -37,9 +140,9 @@ namespace ObsidianEngine
 
 	}
 
-	void VulkanDevice::drawTriangle()
+	void VulkanDevice::draw(std::span<MeshRenderData> renderList)
 	{
-		drawFrame();
+		drawFrame(renderList);
 	}
 
 	void VulkanDevice::waitIdle()
@@ -291,24 +394,31 @@ namespace ObsidianEngine
 		};
 
 		float queuePriority = 0.5f;
-		vk::DeviceQueueCreateInfo deviceQueueCreateInfo
+		std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
+		std::set<uint32_t> uniqueQueueFamilies = { m_graphicsQueueIndex, m_transferQueueIndex };
+
+		for (uint32_t qf : uniqueQueueFamilies)
 		{
-			.queueFamilyIndex = m_graphicsQueueIndex,
+			vk::DeviceQueueCreateInfo queueInfo{
+			.queueFamilyIndex = qf,
 			.queueCount = 1,
 			.pQueuePriorities = &queuePriority
-		};
+			};
+			queueCreateInfos.push_back(queueInfo);
+		}
 
 		vk::DeviceCreateInfo deviceCreateInfo
 		{
 			.pNext = &featureChain.get<vk::PhysicalDeviceFeatures2>(),
-			.queueCreateInfoCount = 1,
-			.pQueueCreateInfos = &deviceQueueCreateInfo,
+			.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size()),
+			.pQueueCreateInfos = queueCreateInfos.data(),
 			.enabledExtensionCount = static_cast<uint32_t>(s_requiredDeviceExtensions.size()),
 			.ppEnabledExtensionNames = s_requiredDeviceExtensions.data()
 		};
 
 		m_device = vk::raii::Device(m_physicalDevice, deviceCreateInfo);
 		m_graphicsQueue = vk::raii::Queue(m_device, m_graphicsQueueIndex, 0);
+		m_transferQueue = vk::raii::Queue(m_device, m_transferQueueIndex, 0);
 	}
 
 	void VulkanDevice::createSwapChain(Window* window)
@@ -345,34 +455,94 @@ namespace ObsidianEngine
 
 	void VulkanDevice::createCommandPool()
 	{
-		vk::CommandPoolCreateInfo poolInfo{ .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-										   .queueFamilyIndex = m_graphicsQueueIndex };
-		m_commandPool = vk::raii::CommandPool(m_device, poolInfo);
+		vk::CommandPoolCreateInfo graphicsPoolInfo{ 
+			.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+			.queueFamilyIndex = m_graphicsQueueIndex
+		};
+		m_commandGraphicsPool = vk::raii::CommandPool(m_device, graphicsPoolInfo);
+
+		vk::CommandPoolCreateInfo transferPoolInfo{
+			.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+			.queueFamilyIndex = m_transferQueueIndex
+		};
+		m_commandTransferPool = vk::raii::CommandPool(m_device, transferPoolInfo);
+	}
+
+	std::pair<vk::raii::Buffer, vk::raii::DeviceMemory>  VulkanDevice::createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usuage, vk::MemoryPropertyFlags propteries)
+	{
+		std::vector<uint32_t> queueFamilyIndices = {
+			m_graphicsQueueIndex,
+			m_transferQueueIndex
+		};
+
+		vk::BufferCreateInfo bufferInfo{
+			.size = size,
+			.usage = usuage,
+			.sharingMode = vk::SharingMode::eExclusive,
+			.queueFamilyIndexCount = static_cast<uint32_t>(queueFamilyIndices.size()),
+			.pQueueFamilyIndices = queueFamilyIndices.data()
+		};
+
+		vk::raii::Buffer buffer = vk::raii::Buffer(m_device, bufferInfo);
+
+		vk::MemoryRequirements memRequirements = buffer.getMemoryRequirements();
+
+		vk::MemoryAllocateInfo memoryAllocateInfo{
+			.allocationSize = memRequirements.size,
+			.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, propteries)
+		};
+
+
+		vk::raii::DeviceMemory bufferMemory = vk::raii::DeviceMemory(m_device, memoryAllocateInfo);
+		buffer.bindMemory(*bufferMemory, 0);
+
+		return { std::move(buffer), std::move(bufferMemory) };
+	}
+
+	void VulkanDevice::copyBuffer(vk::raii::Buffer& srcBuffer, vk::raii::Buffer& dstBuffer, vk::DeviceSize size)
+	{
+		vk::CommandBufferAllocateInfo allocInfo{
+			.commandPool = m_commandTransferPool, 
+			.level = vk::CommandBufferLevel::ePrimary, 
+			.commandBufferCount = 1
+		};
+
+		vk::raii::CommandBuffer commandCopyBuffer = std::move(m_device.allocateCommandBuffers(allocInfo).front());
+
+		commandCopyBuffer.begin({ .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit });
+		commandCopyBuffer.copyBuffer(*srcBuffer, *dstBuffer, vk::BufferCopy(0, 0, size));
+		commandCopyBuffer.end();
+
+		m_transferQueue.submit(vk::SubmitInfo{ .commandBufferCount = 1, .pCommandBuffers = &*commandCopyBuffer }, nullptr);
+		m_transferQueue.waitIdle();
 	}
 
 	void VulkanDevice::createVertexBuffer()
 	{
-		vk::BufferCreateInfo bufferInfo{
-			.size = sizeof(vertices[0]) * vertices.size(),
-			.usage = vk::BufferUsageFlagBits::eVertexBuffer,
-			.sharingMode = vk::SharingMode::eExclusive
-		};
+		vk::DeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
+		auto [stagingBuffer, stagingBufferMemory] = createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
-		m_vertexBuffer = vk::raii::Buffer(m_device, bufferInfo);
+		void* dataStaging = stagingBufferMemory.mapMemory(0, bufferSize);
+		memcpy(dataStaging, vertices.data(), bufferSize);
+		stagingBufferMemory.unmapMemory();
 
-		vk::MemoryRequirements memRequirements = m_vertexBuffer.getMemoryRequirements();
+		std::tie(m_vertexBuffer, m_vertexBufferMemory) = createBuffer(bufferSize, vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-		vk::MemoryAllocateInfo memoryAllocateInfo{
-			.allocationSize = memRequirements.size,
-			.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent)
-		};
+		copyBuffer(stagingBuffer, m_vertexBuffer, bufferSize);
+	}
 
-		m_vertexBufferMemory = vk::raii::DeviceMemory(m_device, memoryAllocateInfo);
-		m_vertexBuffer.bindMemory(*m_vertexBufferMemory, 0);
+	void VulkanDevice::createIndexBuffer()
+	{
+		vk::DeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+		auto [stagingBuffer, stagingBufferMemory] = createBuffer(bufferSize, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
-		void* data = m_vertexBufferMemory.mapMemory(0, bufferInfo.size);
-		memcpy(data, vertices.data(), bufferInfo.size);
-		m_vertexBufferMemory.unmapMemory();
+		void* dataStaging = stagingBufferMemory.mapMemory(0, bufferSize);
+		memcpy(dataStaging, indices.data(), bufferSize);
+		stagingBufferMemory.unmapMemory();
+
+		std::tie(m_indexBuffer, m_indexBufferMemory) = createBuffer(bufferSize, vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+		copyBuffer(stagingBuffer, m_indexBuffer, bufferSize);
 	}
 
 	uint32_t VulkanDevice::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties)
@@ -393,7 +563,7 @@ namespace ObsidianEngine
 	void VulkanDevice::createCommandBuffers()
 	{
 		m_commandBuffers.clear();
-		vk::CommandBufferAllocateInfo allocInfo{ .commandPool = m_commandPool, .level = vk::CommandBufferLevel::ePrimary, .commandBufferCount = MAX_FRAMES_IN_FLIGHT };
+		vk::CommandBufferAllocateInfo allocInfo{ .commandPool = m_commandGraphicsPool, .level = vk::CommandBufferLevel::ePrimary, .commandBufferCount = MAX_FRAMES_IN_FLIGHT };
 		m_commandBuffers = vk::raii::CommandBuffers(m_device, allocInfo);
 	}
 	void VulkanDevice::createSyncObjects()
@@ -412,7 +582,7 @@ namespace ObsidianEngine
 		}
 	}
 
-	void VulkanDevice::drawFrame()
+	void VulkanDevice::drawFrame(std::span<MeshRenderData> renderList)
 	{
 		auto fenceResult = m_device.waitForFences(*m_inFlightFences[m_frameIndex], vk::True, UINT64_MAX);
 		if (fenceResult != vk::Result::eSuccess)
@@ -438,7 +608,7 @@ namespace ObsidianEngine
 		m_device.resetFences(*m_inFlightFences[m_frameIndex]);
 
 		m_commandBuffers[m_frameIndex].reset();
-		recordCommandBuffer(imageIndex);
+		recordCommandBuffer(imageIndex, renderList);
 
 		vk::PipelineStageFlags waitDestinationStageMask(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 		const vk::SubmitInfo   submitInfo{ .waitSemaphoreCount = 1,
@@ -465,7 +635,7 @@ namespace ObsidianEngine
 		m_frameIndex = (m_frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 	}
 
-	void VulkanDevice::recordCommandBuffer(uint32_t imageIndex)
+	void VulkanDevice::recordCommandBuffer(uint32_t imageIndex, std::span<MeshRenderData> renderList)
 	{
 		auto& commandBuffer = m_commandBuffers[m_frameIndex];
 		commandBuffer.begin({});
@@ -499,14 +669,23 @@ namespace ObsidianEngine
 
 	    m_pipeline->bind(commandBuffer, vk::PipelineBindPoint::eGraphics);
 
-		commandBuffer.bindVertexBuffers(0, *m_vertexBuffer, { 0 });
+		//commandBuffer.bindVertexBuffers(0, *m_vertexBuffer, { 0 });
+		//commandBuffer.bindIndexBuffer(*m_indexBuffer, 0, vk::IndexType::eUint16);
 
 		vk::Viewport viewport{ 0.0f, 0.0f, (float)m_swapchain->getExtent().width, (float)m_swapchain->getExtent().height, 0.0f, 1.0f };
 		vk::Rect2D scissor{ {0, 0}, m_swapchain->getExtent() };
 		commandBuffer.setViewport(0, viewport);
 		commandBuffer.setScissor(0, scissor);
 
-		commandBuffer.draw(static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+		for (const auto& mesh : renderList) 
+		{
+			commandBuffer.bindVertexBuffers(0, mesh.vertexBuffer, { 0 });
+			commandBuffer.bindIndexBuffer(mesh.indexBuffer, 0, vk::IndexType::eUint16);
+
+			commandBuffer.drawIndexed(mesh.indexCount, 1, 0, 0, 0);
+		}
+
+		//commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
 		commandBuffer.endRendering();
 
