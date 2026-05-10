@@ -135,7 +135,8 @@ struct Triangle
     }
 };
 
-class SierpinskiSystem : public ISystem {
+class SierpinskiSystem : public ISystem 
+{
 public:
     SierpinskiSystem(Scene* scene, EntityID target, Triangle base, uint32_t maxDepth, bool enableFading = true) 
         : m_scene(scene), m_target(target), m_base(base), m_maxDepth(maxDepth), m_enableFading(enableFading) {}
@@ -196,13 +197,15 @@ private:
         std::vector<Triangle> triangles = Triangle::generateSierpinski(m_base, activeDepth, fade);
         if (triangles.empty()) return;
 
+        //std::cout << "\rTriangle Count : " << triangles.size() << "   " << std::flush;
+
         auto [verts, inds] = Triangle::buildMesh(triangles);
         auto& mesh = m_scene->getRegistry().getComponent<MeshComponent>(m_target);
         mesh.vertices = std::move(verts);
         mesh.indices = std::move(inds);
         mesh.isDirty = true;
     }
-
+    
     Scene* m_scene;
     EntityID m_target;
     Triangle m_base;
@@ -226,10 +229,10 @@ protected:
             { { -size, size }, color }
         };
 
-        EntityID entity = m_activeScene->createEntity();
-        m_activeScene->getRegistry().addComponent<MeshComponent>(entity, std::vector<Vertex>{tri.a, tri.b ,tri.c}, std::vector<uint16_t>{0, 1, 2}, -1);
+        EntityID entity = m_activeScene->createEntity(); 
+        m_activeScene->getRegistry().addComponent<MeshComponent>(entity, std::vector<Vertex>{tri.a, tri.b ,tri.c}, std::vector<uint16_t>{0, 1, 2}, -1, false);
 
-        m_activeScene->addSystem<SierpinskiSystem>(m_activeScene.get(), entity, tri, 6, true);
+        m_activeScene->addSystem<SierpinskiSystem>(m_activeScene.get(), entity, tri, 7, true);
     }
 };
 

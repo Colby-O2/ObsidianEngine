@@ -8,6 +8,8 @@
 #include <iostream>
 #include <vector>
 
+#include <iostream>
+
 namespace ObsidianEngine
 {
 	class RenderSystem : public ISystem
@@ -30,15 +32,25 @@ namespace ObsidianEngine
 
                 if (mesh.gpuId == -1) 
                 {
-                    mesh.gpuId = m_device->uploadMeshData(mesh.vertices, mesh.indices);
+                    mesh.gpuId = m_device->uploadMeshData(mesh.vertices, mesh.indices, mesh.isStatic);
 
-                    mesh.vertices.clear(); 
-                    mesh.indices.clear();
+                    //mesh.vertices.clear(); 
+                    //mesh.indices.clear();
                 }
                 else if (mesh.isDirty)
                 {
-                    m_device->updateDynamicMesh(mesh.gpuId, mesh.vertices, mesh.indices);
-                    mesh.isDirty = false;
+                    if (!mesh.isStatic)
+                    {
+                        m_device->updateDynamicMesh(mesh.gpuId, mesh.vertices, mesh.indices);
+                        mesh.isDirty = false;
+                    }
+                    else 
+                    {
+                        std::cout << "A static mesh was set Dirty but you can't modify a static mesh!" << std::endl;
+                    }
+
+                    //mesh.vertices.clear();
+                    //mesh.indices.clear();
                 }
 
                 m_renderList.push_back(m_device->getGPUBufferData(mesh.gpuId));

@@ -21,24 +21,18 @@ void ObsidianEngine::Application::run()
 		static_cast<VulkanDevice*>(m_renderDevice.get())
 	);
 	onStartup();
-
-	//std::vector<Vertex> vertices = {
-	//		{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-	//		{{ 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-	//		{{ 0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}},
-	//		{{-0.5f,  0.5f}, {1.0f, 1.0f, 1.0f}}
-	//};
-
-	//std::vector<uint16_t> indices = {
-	//	0, 1, 2, 2, 3, 0
-	//};
-
-	//EntityID square = m_activeScene->createEntity();
-
-	//m_activeScene->getRegistry().addComponent<MeshComponent>(square, vertices, indices, -1);
-
 	mainLoop();
 	cleanup();
+}
+
+void ObsidianEngine::Application::setScene(std::shared_ptr<Scene> scene)
+{
+	m_activeScene = std::move(scene);
+}
+
+ObsidianEngine::Scene* ObsidianEngine::Application::getScene()
+{
+	return m_activeScene.get();;
 }
 
 void ObsidianEngine::Application::setFrameBufferRsizedFlag()

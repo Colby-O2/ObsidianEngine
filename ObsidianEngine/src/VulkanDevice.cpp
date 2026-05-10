@@ -8,37 +8,48 @@
 
 namespace ObsidianEngine
 {
-	uint32_t VulkanDevice::uploadMeshData(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices)
+	uint32_t VulkanDevice::uploadMeshData(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices, bool isStatic)
 	{
+		vk::MemoryPropertyFlags bufferMemoryFlags = (isStatic) ? vk::MemoryPropertyFlagBits::eDeviceLocal : vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+
 		vk::DeviceSize vSize = sizeof(Vertex) * vertices.size();
-		auto [vStaging, vStagingMem] = createBuffer(vSize,
+		auto [vStaging, vStagingMem] = createBuffer(
+			vSize,
 			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+		);
 
 		void* vPtr = vStagingMem.mapMemory(0, vSize);
 		memcpy(vPtr, vertices.data(), vSize);
 		vStagingMem.unmapMemory();
 
-		auto [vBuffer, vBufferMem] = createBuffer(vSize,
+		auto [vBuffer, vBufferMem] = createBuffer(
+			vSize,
 			vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
+			bufferMemoryFlags);
 		copyBuffer(vStaging, vBuffer, vSize);
 
 		vk::DeviceSize iSize = sizeof(uint16_t) * indices.size();
-		auto [iStaging, iStagingMem] = createBuffer(iSize,
+		auto [iStaging, iStagingMem] = createBuffer(
+			iSize,
 			vk::BufferUsageFlagBits::eTransferSrc,
-			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+		);
 
 		void* iPtr = iStagingMem.mapMemory(0, iSize);
 		memcpy(iPtr, indices.data(), iSize);
 		iStagingMem.unmapMemory();
 
-		auto [iBuffer, iBufferMem] = createBuffer(iSize,
+		auto [iBuffer, iBufferMem] = createBuffer(
+			iSize,
 			vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst,
-			vk::MemoryPropertyFlagBits::eDeviceLocal);
+			bufferMemoryFlags
+		);
 		copyBuffer(iStaging, iBuffer, iSize);
 
 		m_meshCache.push_back({
+			!isStatic,
+
 			std::move(vBuffer),
 			std::move(vBufferMem),
 			vSize,
@@ -59,7 +70,7 @@ namespace ObsidianEngine
 		vk::DeviceSize vReqSize = sizeof(Vertex) * vertices.size();
 		vk::DeviceSize iReqSize = sizeof(uint16_t) * indices.size();
 
-		if (vReqSize > resource.vertexBufferSize || iReqSize > resource.indexBufferSize)
+		if (!resource.isDynamic || vReqSize > resource.vertexBufferSize || iReqSize > resource.indexBufferSize)
 		{
 			m_device.waitIdle();
 
@@ -81,6 +92,8 @@ namespace ObsidianEngine
 			resource.indexBuffer = std::move(newIBuf);
 			resource.indexMemory = std::move(newIMem);
 			resource.indexBufferSize = newISize;
+
+			resource.isDynamic = true;
 		}
 
 		void* vPtr = resource.vertexMemory.mapMemory(0, vReqSize);

@@ -57,13 +57,15 @@ namespace ObsidianEngine
         void draw(std::span<MeshRenderData> renderList) override;
         void waitIdle() override;
 
-        uint32_t uploadMeshData(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices);
+        uint32_t uploadMeshData(const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices, bool isStatic = false);
         void updateDynamicMesh(uint32_t gpuId, const std::vector<Vertex>& vertices, const std::vector<uint16_t>& indices);
         MeshRenderData getGPUBufferData(uint32_t gpuId);
 
     private:
         struct GPUMeshResource 
         {
+            bool isDynamic;
+
             vk::raii::Buffer       vertexBuffer;
             vk::raii::DeviceMemory vertexMemory;
             vk::DeviceSize         vertexBufferSize = 0;

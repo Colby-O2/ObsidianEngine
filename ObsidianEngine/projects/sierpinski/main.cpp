@@ -1,11 +1,11 @@
 #include "SierpinskiTriangleApplication.h"
 
-namespace ObsidianEngine 
+using namespace ObsidianEngine;
+
+Application* CreateApplication()
 {
-	Application* CreateApplication()
-	{
-		return new SierpinskiTriangleApplication();
-	}
+	return new SierpinskiTriangleApplication();
 }
+
 
 #include <ObsidianEngine/EntryPoint.h>

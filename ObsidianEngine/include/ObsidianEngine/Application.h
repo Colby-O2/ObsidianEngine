@@ -6,6 +6,7 @@
 #include "Scene.h"
 
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <cstdlib>
 #include<array>
@@ -25,6 +26,9 @@ namespace ObsidianEngine
 
 		void run();
 		void close() { m_running = false; }
+
+		void setScene(std::shared_ptr<Scene> scene);
+		Scene* getScene();
 
 		void setFrameBufferRsizedFlag();
 

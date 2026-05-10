@@ -16,6 +16,7 @@ namespace ObsidianEngine
         std::vector<Vertex> vertices;
         std::vector<uint16_t> indices;
         uint32_t gpuId = -1;
+        bool isStatic = false;
         bool isDirty = false;
 
         MeshComponent() = default;
@@ -23,11 +24,13 @@ namespace ObsidianEngine
         MeshComponent(
             std::vector<Vertex> verts,
             std::vector<uint16_t> inds,
-            uint32_t id = -1
+            uint32_t id = -1,
+            bool isStatic = false
         )
             : vertices(std::move(verts))
             , indices(std::move(inds))
             , gpuId(id)
+            , isStatic(isStatic)
         {
         }
     };
