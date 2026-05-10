@@ -16,6 +16,9 @@ namespace ObsidianEngine
 {
 	namespace detail
 	{
+		template<size_t Rows, size_t Cols, typename T>
+		struct Matrix;
+
 		template<typename T, size_t N>
 		struct Vector;
 	}
@@ -24,29 +27,17 @@ namespace ObsidianEngine
 	using Vector3 = detail::Vector<float, 3>;
 	using Vector4 = detail::Vector<float, 4>;
 
-	using Vector2Int = detail::Vector<int, 2>;
-	using Vector3Int = detail::Vector<int, 3>;
-	using Vector4Int = detail::Vector<int, 4>;
+	using Vector2d = detail::Vector<double, 2>;
+	using Vector3d = detail::Vector<double, 3>;
+	using Vector4d = detail::Vector<double, 4>;
+
+	using Vector2i = detail::Vector<int, 2>;
+	using Vector3i = detail::Vector<int, 3>;
+	using Vector4i = detail::Vector<int, 4>;
 
 	namespace detail
 	{
-		constexpr size_t swizzleIndex(char c)
-		{
-			switch (c)
-			{
-				case 'x': return 0;
-				case 'y': return 1;
-				case 'z': return 2;
-				case 'w': return 3;
-
-				case 'r': return 0;
-				case 'g': return 1;
-				case 'b': return 2;
-				case 'a': return 3;
-			}
-
-			return static_cast<size_t>(c - '0');
-		}
+		constexpr size_t swizzleIndex(char c);
 
 		template<size_t...>
 		struct HasDuplicates : std::false_type {};
@@ -64,10 +55,7 @@ namespace ObsidianEngine
 
 			T* data;
 
-			operator Vector<T, Size>() const
-			{
-				return eval();
-			}
+			operator Vector<T, Size>() const;
 
 			Vector<T, Size> eval() const
 			{
@@ -120,6 +108,26 @@ namespace ObsidianEngine
 			const Derived& self() const
 			{
 				return static_cast<const Derived&>(*this);
+			}
+
+			static constexpr Derived zero()
+			{
+				Derived result{};
+				for (size_t i = 0; i < N; ++i)
+				{
+					result[i] = static_cast<T>(0);
+				}
+				return result;
+			}
+
+			static constexpr Derived one()
+			{
+				Derived result{};
+				for (size_t i = 0; i < N; ++i)
+				{
+					result[i] = static_cast<T>(1);
+				}
+				return result;
 			}
 
 			template<StringLiteral Str>
@@ -311,6 +319,21 @@ namespace ObsidianEngine
 			}
 #pragma endregion Comparison Operators
 
+#pragma region Matrix Conversion
+			detail::Matrix<N, 1, T> asColumnMatrix() const
+			{
+				detail::Matrix<N, 1, T> m;
+				m.setColumn(0, self());
+				return m;
+			}
+
+			detail::Matrix<1, N, T> asRowMatrix() const
+			{
+				detail::Matrix<1, N, T> m;
+				m.setRow(0, self());
+				return m;
+			}
+#pragma endregion Matrix Conversion
 
 #pragma region Math Memeber Functions
 			T dot(const Derived& rhs) const
@@ -388,15 +411,60 @@ namespace ObsidianEngine
 				return result;
 			}
 
-			static Derived lerp(const Derived& a, const Derived& b, T t)
-			{
-				float clampedT = std::clamp(t, T(0), T(1));
-				return a + clampedT * (b - a);
-			}
-
 			static Derived lerpUnclamped(const Derived& a, const Derived& b, T t)
 			{
 				return a + t * (b - a);
+			}
+
+			static Derived lerp(const Derived& a, const Derived& b, T t)
+			{
+				return lerpUnclamped(a, b, std::clamp(t, static_cast<T>(0), static_cast<T>(1)));
+			}
+
+			static Derived nlerpUnclamped(const Derived& a, const Derived& b, T t)
+			{
+				Derived v = lerpUnclamped(a, b, t);
+				if (v.sqrMagnitude() < static_cast<T>(1e-7)) return Derived::zero();
+				return v.normalized();
+			}
+
+			static Derived nlerp(const Derived& a, const Derived& b, T t)
+			{
+				return nlerpUnclamped(a, b, std::clamp(t, static_cast<T>(0), static_cast<T>(1)));
+			}
+
+			static Derived slerpUnclamped(const Derived& a, const Derived& b, T t)
+			{
+				Derived v1 = a.normalized();
+				Derived v2 = b.normalized();
+
+				T dot = v1.dot(v2);
+
+				dot = std::clamp(dot, static_cast<T>(-1), static_cast<T>(1));
+
+				if (dot > static_cast<T>(0.9995))
+				{
+					return nlerpUnclamped(a, b, t);
+				}
+
+				T theta_0 = std::acos(dot); 
+				T theta = theta_0 * t;
+				T sin_theta = std::sin(theta);
+				T sin_theta_0 = std::sin(theta_0);
+
+				T s0 = std::cos(theta) - dot * sin_theta / sin_theta_0;
+				T s1 = sin_theta / sin_theta_0;
+
+				T magA = a.magnitude();
+				T magB = b.magnitude();
+				T finalMag = magA + (magB - magA) * t;
+
+				return ((v1 * s0) + (v2 * s1)) * finalMag;
+			}
+
+			static Derived slerp(const Derived& a, const Derived& b, T t)
+			{
+				return slerpUnclamped(a, b, std::clamp(t, static_cast<T>(0), static_cast<T>(1)));
 			}
 
 			static Derived clamp(const Derived& v, const Derived& min, const Derived& max)
@@ -453,7 +521,7 @@ namespace ObsidianEngine
 		};
 
 		template<typename T, typename R, size_t N>
-		Vector<R, N> operator*(T scalar, const Vector<R, N>& v)
+		auto operator*(T scalar, const Vector<R, N>& v) -> std::enable_if_t<std::is_arithmetic_v<T>, Vector<R, N>>
 		{
 			static_assert(std::is_arithmetic_v<T>);
 			return v * static_cast<R>(scalar);
@@ -491,6 +559,11 @@ namespace ObsidianEngine
 			constexpr Vector(const Vector& v) : data{ v[0], v[1] } {}
 
 			constexpr Vector(T x_, T y_) : data{ x_, y_ } {}
+
+			static constexpr Vector up() { return { T(0), T(1) }; }
+			static constexpr Vector down() { return { T(0), T(-1) }; }
+			static constexpr Vector left() { return { T(-1), T(0) }; }
+			static constexpr Vector right() { return { T(1), T(0) }; }
 		};
 
 		template<typename T>
@@ -508,6 +581,13 @@ namespace ObsidianEngine
 			constexpr Vector(const Vector& v) : data{ v[0], v[1], v[2] } {}
 
 			constexpr Vector(T x_, T y_, T z_) : data{ x_, y_, z_ } {}
+
+			static constexpr Vector up() { return { T(0), T(1), T(0) }; }
+			static constexpr Vector down() { return { T(0), T(-1), T(0) }; }
+			static constexpr Vector left() { return { T(-1), T(0), T(0) }; }
+			static constexpr Vector right() { return { T(1), T(0), T(0) }; }
+			static constexpr Vector forward() { return { T(0), T(0), T(1) }; }
+			static constexpr Vector back() { return { T(0), T(0), T(-1) }; }
 
 			Vector<T, 3> cross(const  Vector<T, 3>& rhs)
 			{
@@ -540,6 +620,8 @@ namespace ObsidianEngine
 			constexpr Vector(const Vector& v) : data{ v[0], v[1], v[2], v[3] } {}
 
 			constexpr Vector(T x_, T y_, T z_, T w_) : data{ x_, y_, z_, w_ } {}
+
+			static constexpr Vector identity() { return { T(0), T(0), T(0), T(1) }; }
 		};
 
 		template<typename T, size_t N>

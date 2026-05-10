@@ -7,10 +7,15 @@
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
+#include "Quaternion.h"
 
 extern ObsidianEngine::Application* CreateApplication();
 
 using namespace ObsidianEngine;
+
+void PrintHeader(const std::string& text) {
+    std::cout << "\n--- " << text << " ---\n";
+}
 
 int main()
 {
@@ -26,16 +31,7 @@ int main()
     //    return EXIT_FAILURE;
     //}
 
-    Matrix4x4 m{
-        {2, 34, 4, 24},
-        {43, 5, 6, 7},
-        {3, 35, 62, 22},
-        {2, 33, 67, 40}
-    };
 
-    //std::cout << m.perspective(90, 0.8, 0.4, 100) << std::endl;
-    std::cout << m.getRow(0) << std::endl;
-        
     return EXIT_SUCCESS;
 }
 
