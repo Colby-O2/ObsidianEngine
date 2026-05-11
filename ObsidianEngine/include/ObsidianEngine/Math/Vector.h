@@ -10,6 +10,7 @@
 #include <cmath>
 #include <algorithm>
 
+#include "ObsidianEngine/Math/MathUtils.h"
 #include "ObsidianEngine/Math/Swizzle.h"
 #include "ObsidianEngine/StringLiteral.h"
 
@@ -42,6 +43,8 @@ namespace ObsidianEngine
 		struct VectorBase
 		{
 			static_assert(std::is_arithmetic_v<T>);
+
+			static constexpr size_t Size = N;
 
 			Derived& self()
 			{
@@ -162,8 +165,38 @@ namespace ObsidianEngine
 				return result;
 			}
 
+			Derived& operator*=(const Derived& rhs)
+			{
+				for (size_t i = 0; i < N; i++)
+				{
+					self()[i] *= rhs[i];
+				}
+				return self();
+			}
+
+			Derived operator*(const Derived& rhs) const
+			{
+				Derived result{};
+				for (size_t i = 0; i < N; i++)
+				{
+					result[i] = self()[i] * rhs[i];
+				}
+				return result;
+			}
+
 			Derived operator/(T scalar) const
 			{
+				if constexpr (std::is_floating_point_v<T>)
+				{
+					assert(std::abs(scalar) > Math<T>::Epsilon &&
+						"Division by zero!");
+				}
+				else
+				{
+					assert(scalar != static_cast<T>(0) &&
+						"Division by zero!");
+				}
+
 				Derived result{};
 				for (size_t i = 0; i < N; i++)
 				{
@@ -211,6 +244,17 @@ namespace ObsidianEngine
 
 			Derived& operator/=(T scalar)
 			{
+				if constexpr (std::is_floating_point_v<T>)
+				{
+					assert(std::abs(scalar) > Math<T>::Epsilon &&
+						"Division by zero!");
+				}
+				else
+				{
+					assert(scalar != static_cast<T>(0) &&
+						"Division by zero!");
+				}
+
 				for (size_t i = 0; i < N; i++)
 				{
 					self()[i] /= scalar;
@@ -239,15 +283,22 @@ namespace ObsidianEngine
 #pragma endregion Arithmetic Operators
 
 #pragma region Comparison Operators
-			bool equals(const Derived& rhs, T epsilon = static_cast<T>(0.00001)) const
+			bool equals(const Derived& rhs) const
 			{
 				for (size_t i = 0; i < N; i++)
 				{
-					if (std::abs(self()[i] - rhs[i]) > epsilon)
+					if constexpr (std::is_floating_point_v<T>)
 					{
-						return false;
+						if (std::abs(self()[i] - rhs[i]) > Math<T>::Epsilon)
+							return false;
+					}
+					else
+					{
+						if (self()[i] != rhs[i])
+							return false;
 					}
 				}
+
 				return true;
 			}
 
@@ -284,6 +335,11 @@ namespace ObsidianEngine
 				return Derived::dot(self(), rhs);
 			}
 
+			Matrix<N, N, T> outer(const Derived& rhs) const
+			{
+				return Derived::outer(self(), rhs);
+			}
+
 			T sqrMagnitude() const
 			{
 				return Derived::dot(self(), self());
@@ -296,14 +352,27 @@ namespace ObsidianEngine
 
 			Derived normalized() const
 			{
-				Derived result{};
-				result = self() / magnitude();
-				return result;
+				T magSq = sqrMagnitude();
+
+				if (magSq <= Math<T>::Epsilon)
+				{
+					return Derived::zero();
+				}
+
+				return self() / std::sqrt(magSq);
 			}
 
 			void normalize()
 			{
-				self() /= magnitude();
+				T magSq = sqrMagnitude();
+
+				if (magSq <= Math<T>::Epsilon)
+				{
+					self() = Derived::zero();
+					return;
+				}
+
+				self() /= std::sqrt(magSq);
 			}
 #pragma endregion Math Memeber Functions
 
@@ -318,9 +387,14 @@ namespace ObsidianEngine
 				return dotProduct;
 			}
 
+			static Matrix<N, N, T> outer(const Derived& a, const Derived& b)
+			{
+				return a.asColumnMatrix() * b.asRowMatrix();
+			}
+
 			static T sqrDistance(const Derived& a, const Derived& b)
 			{
-				T result = T(0);
+				T result = Math<T>::val(0);
 				for (size_t i = 0; i < N; i++)
 				{
 					T d = b[i] - a[i];
@@ -385,7 +459,7 @@ namespace ObsidianEngine
 
 				dot = std::clamp(dot, static_cast<T>(-1), static_cast<T>(1));
 
-				if (dot > static_cast<T>(0.9995))
+				if (std::abs(dot) > Math<T>::AlmostOne)
 				{
 					return nlerpUnclamped(a, b, t);
 				}
@@ -503,10 +577,10 @@ namespace ObsidianEngine
 
 			constexpr Vector(T x_, T y_) : data{ x_, y_ } {}
 
-			static constexpr Vector up() { return { T(0), T(1) }; }
-			static constexpr Vector down() { return { T(0), T(-1) }; }
-			static constexpr Vector left() { return { T(-1), T(0) }; }
-			static constexpr Vector right() { return { T(1), T(0) }; }
+			static constexpr Vector up() { return { Math<T>::val(0), Math<T>::val(1) }; }
+			static constexpr Vector down() { return { Math<T>::val(0), Math<T>::val(-1) }; }
+			static constexpr Vector left() { return { Math<T>::val(-1), Math<T>::val(0) }; }
+			static constexpr Vector right() { return { Math<T>::val(1), Math<T>::val(0) }; }
 		};
 
 		template<typename T>
@@ -525,14 +599,14 @@ namespace ObsidianEngine
 
 			constexpr Vector(T x_, T y_, T z_) : data{ x_, y_, z_ } {}
 
-			static constexpr Vector up() { return { T(0), T(1), T(0) }; }
-			static constexpr Vector down() { return { T(0), T(-1), T(0) }; }
-			static constexpr Vector left() { return { T(-1), T(0), T(0) }; }
-			static constexpr Vector right() { return { T(1), T(0), T(0) }; }
-			static constexpr Vector forward() { return { T(0), T(0), T(1) }; }
-			static constexpr Vector back() { return { T(0), T(0), T(-1) }; }
+			static constexpr Vector up() { return { Math<T>::val(0), Math<T>::val(1), Math<T>::val(0) }; }
+			static constexpr Vector down() { return { Math<T>::val(0), Math<T>::val(-1), Math<T>::val(0) }; }
+			static constexpr Vector left() { return { Math<T>::val(-1), Math<T>::val(0), Math<T>::val(0) }; }
+			static constexpr Vector right() { return { Math<T>::val(1), Math<T>::val(0), Math<T>::val(0) }; }
+			static constexpr Vector forward() { return { Math<T>::val(0), Math<T>::val(0), Math<T>::val(1) }; }
+			static constexpr Vector back() { return { Math<T>::val(0), Math<T>::val(0), Math<T>::val(-1) }; }
 
-			Vector<T, 3> cross(const  Vector<T, 3>& rhs)
+			Vector<T, 3> cross(const  Vector<T, 3>& rhs) const
 			{
 				return Vector<T, 3>::cross(*this, rhs);
 			}
@@ -564,7 +638,7 @@ namespace ObsidianEngine
 
 			constexpr Vector(T x_, T y_, T z_, T w_) : data{ x_, y_, z_, w_ } {}
 
-			static constexpr Vector identity() { return { T(0), T(0), T(0), T(1) }; }
+			static constexpr Vector identity() { return { Math<T>::val(0), Math<T>::val(0), Math<T>::val(0), Math<T>::val(1) }; }
 		};
 
 		template<typename T, size_t N>
@@ -588,7 +662,7 @@ namespace ObsidianEngine
 				}
 			}
 
-			constexpr Vector(const T(&arr)[N])
+			constexpr Vector(const Math<T>::val(&arr)[N])
 			{
 				for (size_t i = 0; i < N; i++)
 				{

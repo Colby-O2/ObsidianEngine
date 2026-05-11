@@ -39,9 +39,12 @@ namespace ObsidianEngine
 
 	namespace detail
 	{
-		template<size_t Rows, size_t Cols, typename T>
+		template<size_t RowsCount, size_t ColsCount, typename T>
 		struct Matrix
 		{
+			static constexpr size_t Rows = RowsCount;
+			static constexpr size_t Cols = ColsCount;
+
 			static_assert(std::is_arithmetic_v<T>, "Matrix type must be numeric!");
 
 			std::array<T, Rows* Cols> data;
@@ -107,7 +110,7 @@ namespace ObsidianEngine
 				return m;
 			}
 
-			static constexpr Matrix fromColumns(std::initializer_list<Vector<T, Cols>> rows)
+			static constexpr Matrix fromColumns(std::initializer_list<Vector<T, Rows>> rows)
 			{
 				return Matrix(rows);
 			}
@@ -233,7 +236,7 @@ namespace ObsidianEngine
 			{
 				Matrix m;
 				size_t n = (Rows < Cols) ? Rows : Cols;
-				for (size_t i = 0; i < n; ++i) m(i, i) = T(1);
+				for (size_t i = 0; i < n; ++i) m(i, i) = static_cast<T>(1);
 				return m;
 			}
 
@@ -349,12 +352,12 @@ namespace ObsidianEngine
 
 				T det = this->determinant();
 
-				if (std::abs(det) < static_cast<T>(1e-7))
+				if (std::abs(det) < Math<T>::val(1e-7))
 				{
 					return identity();
 				}
 
-				T invDet = T(1) / det;
+				T invDet = Math<T>::val(1) / det;
 				Matrix result;
 
 				for (size_t r = 0; r < Rows; ++r)
@@ -480,12 +483,12 @@ namespace ObsidianEngine
 			{
 				T det = this->determinant();
 
-				if (std::abs(det) < static_cast<T>(1e-7))
+				if (std::abs(det) < Math<T>::val(1e-7))
 				{
 					return Base::identity();
 				}
 
-				T invDet = T(1) / det;
+				T invDet = Math<T>::val(1) / det;
 				Matrix4x4 result;
 
 				for (size_t r = 0; r < 4; ++r)
@@ -498,25 +501,25 @@ namespace ObsidianEngine
 				return result;
 			}
 
-			Vector3 multiplyPoint(const Vector3& p) const
+			Vector<T, 3> multiplyPoint(const Vector<T, 3>& p) const
 			{
-				Vector4 r = (*this) * Vector4{ p.x, p.y, p.z, 1.0f };
+				Vector<T, 4> r = (*this) * Vector<T, 4>{ p.x, p.y, p.z, 1.0f };
 				return { r.x, r.y, r.z };
 			}
 
-			Vector3 multiplyDirection(const Vector3& v) const
+			Vector<T, 3> multiplyDirection(const Vector<T, 3>& v) const
 			{
-				Vector4 r = (*this) * Vector4{ v.x, v.y, v.z, 0.0f };
+				Vector<T, 4> r = (*this) * Vector<T, 4>{ v.x, v.y, v.z, 0.0f };
 				return { r.x, r.y, r.z };
 			}
 
-			Vector3 lossyScale() const
+			Vector<T, 3> lossyScale() const
 			{
-				T x = Vector3{ (*this)(0, 0), (*this)(1, 0), (*this)(2, 0) }.sqrMagnitude();
-				T y = Vector3{ (*this)(0, 1), (*this)(1, 1), (*this)(2, 1) }.sqrMagnitude();
-				T z = Vector3{ (*this)(0, 2), (*this)(1, 2), (*this)(2, 2) }.sqrMagnitude();
+				T x = Vector<T, 3>{ (*this)(0, 0), (*this)(1, 0), (*this)(2, 0) }.sqrMagnitude();
+				T y = Vector<T, 3>{ (*this)(0, 1), (*this)(1, 1), (*this)(2, 1) }.sqrMagnitude();
+				T z = Vector<T, 3>{ (*this)(0, 2), (*this)(1, 2), (*this)(2, 2) }.sqrMagnitude();
 
-				return Vector3{
+				return Vector<T, 3>{
 					std::sqrt(x),
 					std::sqrt(y),
 					std::sqrt(z)
@@ -527,15 +530,15 @@ namespace ObsidianEngine
 			{
 				Matrix4x4 m = *this;
 
-				Vector3 right(
+				Vector<T, 3> right(
 					m(0, 0), m(1, 0), m(2, 0)
 				);
 
-				Vector3 up(
+				Vector<T, 3> up(
 					m(0, 1), m(1, 1), m(2, 1)
 				);
 
-				Vector3 forward(
+				Vector<T, 3> forward(
 					m(0, 2), m(1, 2), m(2, 2)
 				);
 
@@ -558,9 +561,9 @@ namespace ObsidianEngine
 				return Quaternion<T>::fromMatrix(m);
 			}
 
-			Vector3 position() const
+			Vector<T, 3> position() const
 			{
-				return Vector3{
+				return Vector<T, 3>{
 					(*this)(0, 3),
 					(*this)(1, 3),
 					(*this)(2, 3)
@@ -602,12 +605,12 @@ namespace ObsidianEngine
 				return q.toMatrix();
 			}
 
-			static Matrix4x4 rotate(const Vector3& e)
+			static Matrix4x4 rotate(const Vector<T, 3>& e)
 			{
 				return Quaternion<T>::fromEuler(e).toMatrix();
 			}
 
-			static Matrix4x4 translate(const Vector3& t)
+			static Matrix4x4 translate(const Vector<T, 3>& t)
 			{
 				Matrix4x4 m = Base::identity();
 				m(0, 3) = t.x;
@@ -616,7 +619,7 @@ namespace ObsidianEngine
 				return m;
 			}
 
-			static Matrix4x4 scale(const Vector3& s)
+			static Matrix4x4 scale(const Vector<T, 3>& s)
 			{
 				Matrix4x4 m = Base::identity();
 				m(0, 0) = s.x;
@@ -625,21 +628,21 @@ namespace ObsidianEngine
 				return m;
 			}
 
-			static Matrix4x4 trs(const Vector3& pos, const Quaternion<T>& rot, const Vector3& s)
+			static Matrix4x4 trs(const Vector<T, 3>& pos, const Quaternion<T>& rot, const Vector<T, 3>& s)
 			{
 				return translate(pos) * rotate(rot) * scale(s);
 			}
 
 			bool validTRS() const
 			{
-				return std::abs(this->determinant()) > static_cast<T>(1e-9);
+				return std::abs(this->determinant()) > Math<T>::val(1e-9);
 			}
 
-			static Matrix4x4 lookAt(const Vector3& eye, const Vector3& target, const Vector3& up)
+			static Matrix4x4 lookAt(const Vector<T, 3>& eye, const Vector<T, 3>& target, const Vector<T, 3>& up)
 			{
-				Vector3 f = (target - eye).normalized();
-				Vector3 s = Vector3::cross(f, up).normalized();
-				Vector3 u = Vector3::cross(s, f).normalized();
+				Vector<T, 3> f = (target - eye).normalized();
+				Vector<T, 3> s = Vector<T, 3>::cross(f, up).normalized();
+				Vector<T, 3> u = Vector<T, 3>::cross(s, f);
 
 				Matrix4x4 m = Base::zero();
 
@@ -647,9 +650,9 @@ namespace ObsidianEngine
 				m(0, 1) = s.y;  m(1, 1) = u.y;  m(2, 1) = -f.y; m(3, 1) = 0;
 				m(0, 2) = s.z;  m(1, 2) = u.z;  m(2, 2) = -f.z; m(3, 2) = 0;
 
-				m(0, 3) = -Vector3::dot(s, eye);
-				m(1, 3) = -Vector3::dot(u, eye);
-				m(2, 3) = Vector3::dot(f, eye);
+				m(0, 3) = -Vector<T, 3>::dot(s, eye);
+				m(1, 3) = -Vector<T, 3>::dot(u, eye);
+				m(2, 3) = Vector<T, 3>::dot(f, eye);
 				m(3, 3) = 1;
 
 				return m;
@@ -657,14 +660,14 @@ namespace ObsidianEngine
 
 			static Matrix4x4 perspective(T fov, T aspect, T nearZ, T farZ)
 			{
-				T fovRad = fov * std::numbers::pi_v<T> / static_cast<T>(180.0);
-				T f = static_cast<T>(1.0) / std::tan(fovRad / static_cast<T>(2.0));
+				T fovRad = fov * std::numbers::pi_v<T> / Math<T>::val(180.0);
+				T f = Math<T>::val(1.0) / std::tan(fovRad / Math<T>::val(2.0));
 
 				Matrix4x4 m = Base::zero();
 				m(0, 0) = f / aspect;
 				m(1, 1) = f;
 				m(2, 2) = -(farZ + nearZ) / (farZ - nearZ);
-				m(2, 3) = -(static_cast<T>(2) * farZ * nearZ) / (farZ - nearZ);
+				m(2, 3) = -(Math<T>::val(2) * farZ * nearZ) / (farZ - nearZ);
 				m(3, 2) = -1;
 				m(3, 3) = 0;
 				return m;
@@ -673,13 +676,14 @@ namespace ObsidianEngine
 			static Matrix4x4 ortho(T left, T right, T bottom, T top, T nearZ, T farZ)
 			{
 				Matrix4x4 m = Base::identity();
-				m(0, 0) = static_cast<T>(2) / (right - left);
-				m(1, 1) = static_cast<T>(2) / (top - bottom);
-				m(2, 2) = -static_cast<T>(2) / (farZ - nearZ);
+				m(0, 0) = Math<T>::val(2) / (right - left);
+				m(1, 1) = Math<T>::val(2) / (top - bottom);
+				m(2, 2) = -Math<T>::val(2) / (farZ - nearZ);
 
 				m(0, 3) = -(right + left) / (right - left);
 				m(1, 3) = -(top + bottom) / (top - bottom);
 				m(2, 3) = -(farZ + nearZ) / (farZ - nearZ);
+
 				return m;
 			}
 
@@ -690,13 +694,13 @@ namespace ObsidianEngine
 				T fn = farZ - nearZ;
 
 				Matrix4x4 m = Base::zero();
-				m(0, 0) = (static_cast<T>(2) * nearZ) / rl;
-				m(1, 1) = (static_cast<T>(2) * nearZ) / tb;
+				m(0, 0) = (Math<T>::val(2) * nearZ) / rl;
+				m(1, 1) = (Math<T>::val(2) * nearZ) / tb;
 
 				m(0, 2) = (right + left) / rl;
 				m(1, 2) = (top + bottom) / tb;
 				m(2, 2) = -(farZ + nearZ) / fn;
-				m(2, 3) = -(static_cast<T>(2) * farZ * nearZ) / fn;
+				m(2, 3) = -(Math<T>::val(2) * farZ * nearZ) / fn;
 
 				m(3, 2) = -1;
 				m(3, 3) = 0;

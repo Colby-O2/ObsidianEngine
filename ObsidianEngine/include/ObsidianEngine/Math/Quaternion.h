@@ -23,7 +23,9 @@ namespace ObsidianEngine
 		struct Quaternion;
 	}
 
-	using Quaternion = detail::Quaternion<float>;
+	using Quaternionf = detail::Quaternion<float>;
+	using Quaterniond = detail::Quaternion<double>;
+	using Quaternion = Quaternionf;
 
 	enum class EulerOrder 
 	{
@@ -666,7 +668,6 @@ namespace ObsidianEngine
 				return !(*this == o);
 			}
 
-			template<typename T>
 			friend std::ostream& operator<<(std::ostream& os, const detail::Quaternion<T>& q) 
 			{
 				os << "(" << q.x << ", " << q.y << ", " << q.z << ", " << q.w << ")";

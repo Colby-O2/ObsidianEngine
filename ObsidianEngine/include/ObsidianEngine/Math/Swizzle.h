@@ -1,6 +1,8 @@
 #ifndef __OBSIDIANENGINE_MATH_SWIZZLE_H__
 #define __OBSIDIANENGINE_MATH_SWIZZLE_H__
 
+#include "ObsidianEngine/StringLiteral.h"
+
 namespace ObsidianEngine::detail
 {
 	template<typename T, size_t N>
@@ -33,6 +35,19 @@ namespace ObsidianEngine::detail
 		static constexpr bool value = ((First == Rest) || ...) || HasDuplicates<Rest...>::value;
 	};
 
+	template<StringLiteral Str>
+	constexpr auto parseSwizzle()
+	{
+		constexpr size_t Count = sizeof(Str.value) - 1;
+
+		std::array<size_t, Count> indices{};
+		for (size_t i = 0; i < Count; ++i)
+		{
+			indices[i] = swizzleIndex(Str.value[i]);
+		}
+		return indices;
+	}
+
 	template<typename T, size_t... Indices>
 	struct SwizzleProxy
 	{
@@ -45,13 +60,122 @@ namespace ObsidianEngine::detail
 			return eval();
 		}
 
-		Vector<T, Size> eval() const;
+		Vector<T, Size> eval() const
+		{
+			return Vector<T, Size>{ data[Indices]... };
+		}
 
-		SwizzleProxy& operator=(const Vector<T, Size>& rhs);
-		T& operator[](size_t i);
-		const T& operator[](size_t i) const;
+		template<StringLiteral Str>
+		constexpr auto swizzle() const
+		{
+			constexpr size_t len = sizeof(Str.value) - 1;
 
-		friend std::ostream& operator<<(std::ostream& os, const SwizzleProxy& v);
+			static_assert(
+				[]<size_t... I>(std::index_sequence<I...>) {
+				return ((swizzleIndex(Str.value[I]) < Size) && ...);
+			}(std::make_index_sequence<len>{}),
+				"Swizzle index out of range for this Proxy!"
+				);
+
+			return swizzle_to_pack<Str>(std::make_index_sequence<len>{});
+		}
+
+		SwizzleProxy& operator=(const Vector<T, Size>& rhs)
+		{
+			static_assert(!HasDuplicates<Indices...>::value, "Cannot assign to swizzle with duplicate components!");
+
+			size_t i = 0;
+			((data[Indices] = rhs[i++]), ...);
+
+			return *this;
+		}
+
+		T& operator[](size_t i)
+		{
+			assert(i < Size && "Vector index out of range!");
+			constexpr size_t lookup[] = { Indices... };
+			return data[lookup[i]];
+		}
+
+		const T& operator[](size_t i) const
+		{
+			assert(i < Size && "Vector index out of range!");
+			constexpr size_t lookup[] = { Indices... };
+			return data[lookup[i]];
+		}
+
+		friend Vector<T, Size> operator+(const SwizzleProxy& lhs, const Vector<T, Size>& rhs)
+		{
+			return lhs.eval() + rhs;
+		}
+
+		friend Vector<T, Size> operator-(const SwizzleProxy& lhs, const Vector<T, Size>& rhs)
+		{
+			return lhs.eval() - rhs;
+		}
+
+		friend Vector<T, Size> operator*(const SwizzleProxy& lhs, const Vector<T, Size>& rhs)
+		{
+			return lhs.eval() * rhs;
+		}
+
+		friend Vector<T, Size> operator+(const Vector<T, Size>& lhs, const SwizzleProxy& rhs)
+		{
+			return lhs + rhs.eval();
+		}
+
+		friend Vector<T, Size> operator-(const Vector<T, Size>& lhs, const SwizzleProxy& rhs)
+		{
+			return lhs - rhs.eval();
+		}
+
+		friend Vector<T, Size> operator*(const Vector<T, Size>& lhs, const SwizzleProxy& rhs)
+		{
+			return lhs * rhs.eval();
+		}
+
+		template<size_t... OtherIndices>
+		friend Vector<T, Size> operator+(const SwizzleProxy& lhs, const SwizzleProxy<T, OtherIndices...>& rhs)
+		{
+			return lhs.eval() + rhs.eval();
+		}
+
+		template<size_t... OtherIndices>
+		friend Vector<T, Size> operator-(const SwizzleProxy& lhs, const SwizzleProxy<T, OtherIndices...>& rhs)
+		{
+			return lhs.eval() - rhs.eval();
+		}
+
+		template<size_t... OtherIndices>
+		friend Vector<T, Size> operator*(const SwizzleProxy& lhs, const SwizzleProxy<T, OtherIndices...>& rhs)
+		{
+			return lhs.eval() * rhs.eval();
+		}
+
+		friend Vector<T, Size> operator-(const SwizzleProxy& lhs)
+		{
+			return -lhs.eval();
+		
+		}
+
+		friend std::ostream& operator<<(std::ostream& os, const SwizzleProxy& v)
+		{
+			os << v.eval();
+			return os;
+		}
+		private:
+			template<size_t... LocalIndices>
+			constexpr auto makeSwizzle() const
+			{
+				constexpr size_t current[] = { Indices... };
+				return SwizzleProxy<T, current[LocalIndices]...>{ data };
+			}
+
+			template<StringLiteral Str, size_t... I>
+			constexpr auto swizzle_to_pack(std::index_sequence<I...>) const
+			{
+				return makeSwizzle<swizzleIndex(Str.value[I])...>();
+			}
 	};
 }
 
