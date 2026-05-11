@@ -1,7 +1,5 @@
-#ifndef MATRIX_H_
-#define MATRIX_H_
-
-#include "Vector.h"
+#ifndef  __OBSIDIANENGINE_MATH_MATRIX_H__
+#define  __OBSIDIANENGINE_MATH_MATRIX_H__
 
 #include <iostream>
 #include <iomanip>
@@ -12,6 +10,9 @@ namespace ObsidianEngine
 {
 	namespace detail
 	{
+		template<typename T, size_t N>
+		struct Vector;
+
 		template<typename T>
 		struct Quaternion;
 

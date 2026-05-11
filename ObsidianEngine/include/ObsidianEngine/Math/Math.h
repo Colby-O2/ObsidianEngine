@@ -1,5 +1,5 @@
-#ifndef OBSIDIANENGINE_MATH_H_
-#define OBSIDIANENGINE_MATH_H_
+#ifndef __OBSIDIANENGINE_MATH_H__
+#define __OBSIDIANENGINE_MATH_H__
 
 #include "Math.h"
 #include "Vector.h"

@@ -1,5 +1,5 @@
-#ifndef VECTOR_H_
-#define VECTOR_H_
+#ifndef __OBSIDIANENGINE_MATH_VECTOR_H__
+#define __OBSIDIANENGINE_MATH_VECTOR_H__
 
 #include <array>
 #include <cassert>
@@ -10,7 +10,8 @@
 #include <cmath>
 #include <algorithm>
 
-#include "StringLiteral.h"
+#include "ObsidianEngine/Math/Swizzle.h"
+#include "ObsidianEngine/StringLiteral.h"
 
 namespace ObsidianEngine
 {
@@ -37,64 +38,6 @@ namespace ObsidianEngine
 
 	namespace detail
 	{
-		constexpr size_t swizzleIndex(char c);
-
-		template<size_t...>
-		struct HasDuplicates : std::false_type {};
-
-		template<size_t First, size_t... Rest>
-		struct HasDuplicates<First, Rest...>
-		{
-			static constexpr bool value = ((First == Rest) || ...) || HasDuplicates<Rest...>::value;
-		};
-
-		template<typename T, size_t... Indices>
-		struct SwizzleProxy
-		{
-			static constexpr size_t Size = sizeof...(Indices);
-
-			T* data;
-
-			operator Vector<T, Size>() const;
-
-			Vector<T, Size> eval() const
-			{
-				return Vector<T, Size>{ data[Indices]... };
-			}
-
-#pragma region Arithmetic Operators
-			SwizzleProxy& operator=(const Vector<T, Size>& rhs)
-			{
-				static_assert(!HasDuplicates<Indices...>::value, "Cannot assign to swizzle with duplicate components!");
-
-				size_t i = 0;
-				((data[Indices] = rhs[i++]), ...);
-
-				return *this;
-			}
-
-			T& operator[](size_t i)
-			{
-				assert(i < Size && "Vector index out of range!");
-				constexpr size_t lookup[] = { Indices... };
-				return data[lookup[i]];
-			}
-
-			const T& operator[](size_t i) const
-			{
-				assert(i < Size && "Vector index out of range!");
-				constexpr size_t lookup[] = { Indices... };
-				return data[lookup[i]];
-			}
-#pragma endregion Arithmetic Operators
-
-			friend std::ostream& operator<<(std::ostream& os, const SwizzleProxy& v)
-			{
-				os << v.eval();
-				return os;
-			}
-		};
-
 		template<typename Derived, typename T, size_t N>
 		struct VectorBase
 		{

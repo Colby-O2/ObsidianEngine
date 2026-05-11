@@ -13,4 +13,5 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_subdirectory ("ObsidianEngine")
 add_subdirectory ("ObsidianEngine/projects/sierpinski")
+add_subdirectory ("ObsidianEngine/tests/")
 
