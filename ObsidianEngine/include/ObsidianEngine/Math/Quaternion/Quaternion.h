@@ -669,6 +669,22 @@ namespace ObsidianEngine::detail
 	};
 
 	template<typename T1, typename T2>
+	inline auto operator+(const Quaternion<T1>& lhs, const Quaternion<T2>& rhs) -> Quaternion<std::common_type_t<T1, T2>>
+	{
+		using ResultT = std::common_type_t<T1, T2>;
+
+		return Quaternion<ResultT>(lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z, lhs.w + rhs.w);
+	}
+
+	template<typename T1, typename T2>
+	inline auto operator-(const Quaternion<T1>& lhs, const Quaternion<T2>& rhs) -> Quaternion<std::common_type_t<T1, T2>>
+	{
+		using ResultT = std::common_type_t<T1, T2>;
+
+		return Quaternion<ResultT>(lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z, lhs.w - rhs.w);
+	}
+
+	template<typename T1, typename T2>
 	inline auto operator*(const Quaternion<T1>& lhs, const Quaternion<T2>& rhs) -> Quaternion<std::common_type_t<T1, T2>>
 	{
 		using ResultT = std::common_type_t<T1, T2>;

@@ -218,6 +218,43 @@ namespace ObsidianEngine::detail
 		static_assert(sizeof...(Indices) == sizeof...(OtherIndices), "Swizzles must be the same size!");
 		return lhs.eval() * rhs.eval();
 	}
+
+	template<typename T, size_t... Indices, typename U>
+	inline auto operator+(const SwizzleProxy<T, Indices...>& lhs, const Vector<U, sizeof...(Indices)>& rhs) -> Vector<std::common_type_t<T, U>, sizeof...(Indices)>
+	{
+		return lhs.eval() + rhs;
+	}
+
+	template<typename T, size_t... Indices, typename U>
+	inline auto operator+(const Vector<U, sizeof...(Indices)>& lhs, const SwizzleProxy<T, Indices...>& rhs) -> Vector<std::common_type_t<T, U>, sizeof...(Indices)>
+	{
+		return lhs + rhs.eval();
+	}
+
+	template<typename T, size_t... Indices, typename U, size_t... OtherIndices>
+	inline auto operator+(const SwizzleProxy<T, Indices...>& lhs, const SwizzleProxy<U, OtherIndices...>& rhs) -> Vector<std::common_type_t<T, U>, sizeof...(Indices)>
+	{
+		static_assert(sizeof...(Indices) == sizeof...(OtherIndices), "Swizzles must be the same size!");
+		return lhs.eval() + rhs.eval();
+	}
+	template<typename T, size_t... Indices, typename U>
+	inline auto operator-(const SwizzleProxy<T, Indices...>& lhs, const Vector<U, sizeof...(Indices)>& rhs) -> Vector<std::common_type_t<T, U>, sizeof...(Indices)>
+	{
+		return lhs.eval() - rhs;
+	}
+
+	template<typename T, size_t... Indices, typename U>
+	inline auto operator-(const Vector<U, sizeof...(Indices)>& lhs, const SwizzleProxy<T, Indices...>& rhs) -> Vector<std::common_type_t<T, U>, sizeof...(Indices)>
+	{
+		return lhs - rhs.eval();
+	}
+
+	template<typename T, size_t... Indices, typename U, size_t... OtherIndices>
+	inline auto operator-(const SwizzleProxy<T, Indices...>& lhs, const SwizzleProxy<U, OtherIndices...>& rhs) -> Vector<std::common_type_t<T, U>, sizeof...(Indices)>
+	{
+		static_assert(sizeof...(Indices) == sizeof...(OtherIndices), "Swizzles must be the same size!");
+		return lhs.eval() - rhs.eval();
+	}
 }
 
 #endif

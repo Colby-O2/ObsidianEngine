@@ -119,8 +119,33 @@ namespace ObsidianEngine::detail
 	{
 		using ResultT = std::common_type_t<T1, T2>;
 		Vector<ResultT, N> result;
-		for (size_t i = 0; i < N; ++i) {
+		for (size_t i = 0; i < N; ++i) 
+		{
 			result[i] = static_cast<ResultT>(lhs[i]) * static_cast<ResultT>(rhs[i]);
+		}
+		return result;
+	}
+
+	template<typename T1, typename T2, size_t N>
+	inline auto operator+(const Vector<T1, N>& lhs, const Vector<T2, N>& rhs) -> Vector<std::common_type_t<T1, T2>, N>
+	{
+		using ResultT = std::common_type_t<T1, T2>;
+		Vector<ResultT, N> result;
+		for (size_t i = 0; i < N; ++i) 
+		{
+			result[i] = static_cast<ResultT>(lhs[i]) + static_cast<ResultT>(rhs[i]);
+		}
+		return result;
+	}
+
+	template<typename T1, typename T2, size_t N>
+	inline auto operator-(const Vector<T1, N>& lhs, const Vector<T2, N>& rhs) -> Vector<std::common_type_t<T1, T2>, N>
+	{
+		using ResultT = std::common_type_t<T1, T2>;
+		Vector<ResultT, N> result;
+		for (size_t i = 0; i < N; ++i) 
+		{
+			result[i] = static_cast<ResultT>(lhs[i]) - static_cast<ResultT>(rhs[i]);
 		}
 		return result;
 	}
