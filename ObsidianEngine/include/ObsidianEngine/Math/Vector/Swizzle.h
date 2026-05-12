@@ -65,6 +65,28 @@ namespace ObsidianEngine::detail
 			return Vector<T, Size>{ data[Indices]... };
 		}
 
+		template<typename U>
+		operator Vector<U, Size>() const
+		{
+			return Vector<U, Size>(eval());
+		}
+
+		template<typename U, size_t N>
+		operator Vector<U, N>() const
+		{
+			Vector<U, N> result{};
+
+			constexpr size_t M = Size;
+			constexpr size_t copyCount = (N < M) ? N : M;
+
+			for (size_t i = 0; i < copyCount; i++)
+			{
+				result[i] = static_cast<U>((*this)[i]);
+			}
+
+			return result;
+		}
+
 		template<StringLiteral Str>
 		constexpr auto swizzle() const
 		{
@@ -77,7 +99,7 @@ namespace ObsidianEngine::detail
 				"Swizzle index out of range for this Proxy!"
 				);
 
-			return swizzle_to_pack<Str>(std::make_index_sequence<len>{});
+			return swizzleToPack<Str>(std::make_index_sequence<len>{});
 		}
 
 		SwizzleProxy& operator=(const Vector<T, Size>& rhs)
@@ -163,20 +185,39 @@ namespace ObsidianEngine::detail
 			os << v.eval();
 			return os;
 		}
-		private:
-			template<size_t... LocalIndices>
-			constexpr auto makeSwizzle() const
-			{
-				constexpr size_t current[] = { Indices... };
-				return SwizzleProxy<T, current[LocalIndices]...>{ data };
-			}
+	private:
+		template<size_t... LocalIndices>
+		constexpr auto makeSwizzle() const
+		{
+			constexpr size_t current[] = { Indices... };
+			return SwizzleProxy<T, current[LocalIndices]...>{ data };
+		}
 
-			template<StringLiteral Str, size_t... I>
-			constexpr auto swizzle_to_pack(std::index_sequence<I...>) const
-			{
-				return makeSwizzle<swizzleIndex(Str.value[I])...>();
-			}
+		template<StringLiteral Str, size_t... I>
+		constexpr auto swizzleToPack(std::index_sequence<I...>) const
+		{
+			return makeSwizzle<swizzleIndex(Str.value[I])...>();
+		}
 	};
+
+	template<typename T, size_t... Indices, typename U>
+	inline auto operator*(const SwizzleProxy<T, Indices...>& lhs, const Vector<U, sizeof...(Indices)>& rhs) -> Vector<std::common_type_t<T, U>, sizeof...(Indices)>
+	{
+		return lhs.eval() * rhs;
+	}
+
+	template<typename T, size_t... Indices, typename U>
+	inline auto operator*(const Vector<U, sizeof...(Indices)>& lhs, const SwizzleProxy<T, Indices...>& rhs) -> Vector<std::common_type_t<T, U>, sizeof...(Indices)>
+	{
+		return lhs * rhs.eval();
+	}
+
+	template<typename T, size_t... Indices, typename U, size_t... OtherIndices>
+	inline auto operator*(const SwizzleProxy<T, Indices...>& lhs, const SwizzleProxy<U, OtherIndices...>& rhs) -> Vector<std::common_type_t<T, U>, sizeof...(Indices)>
+	{
+		static_assert(sizeof...(Indices) == sizeof...(OtherIndices), "Swizzles must be the same size!");
+		return lhs.eval() * rhs.eval();
+	}
 }
 
 #endif

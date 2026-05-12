@@ -67,8 +67,7 @@ void check_vector_exact(const ObsidianEngine::detail::Vector<T, N>& a,
 }
 
 template<size_t R, size_t C, typename T>
-void check_matrix_close(const ObsidianEngine::detail::Matrix<R, C, T>& a,
-    const ObsidianEngine::detail::Matrix<R, C, T>& b,
+void check_matrix_close(const ObsidianEngine::detail::Matrix<R, C, T>& a, const ObsidianEngine::detail::Matrix<R, C, T>& b,
     double eps = EPSILON) 
 {
     for (size_t r = 0; r < R; ++r) 
@@ -81,8 +80,7 @@ void check_matrix_close(const ObsidianEngine::detail::Matrix<R, C, T>& a,
 }
 
 template<size_t R, size_t C, typename T>
-void check_matrix_exact(const ObsidianEngine::detail::Matrix<R, C, T>& a,
-    const ObsidianEngine::detail::Matrix<R, C, T>& b) {
+void check_matrix_exact(const ObsidianEngine::detail::Matrix<R, C, T>& a, const ObsidianEngine::detail::Matrix<R, C, T>& b) {
     for (size_t r = 0; r < R; ++r)
     {
         for (size_t c = 0; c < C; ++c) 

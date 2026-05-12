@@ -817,7 +817,7 @@ TEST_SUITE("Math")
         {
             test_matrix_multiplication<T>();
         }
-        TEST_CASE_TEMPLATE("Matrix Inverse", T, float, double)
+        TEST_CASE_TEMPLATE("Matrix Inverse", T, float, double) /*int*/
         {
             SUBCASE("Matrix 2x2") { test_matrix_inverse<2, 2, T>(); }
             SUBCASE("Matrix 3x3") { test_matrix_inverse<3, 3, T>(); }

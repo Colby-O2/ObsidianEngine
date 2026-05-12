@@ -13,7 +13,7 @@ extern ObsidianEngine::Application* CreateApplication();
 
 using namespace ObsidianEngine;
 
-void PrintHeader(const std::string& text)
+void printHeader(const std::string& text)
 {
     std::cout << "\n--- " << text << " ---\n";
 }
@@ -31,7 +31,6 @@ int main()
         std::cerr << e.what() << std::endl;
         return EXIT_FAILURE;
     }
-
 
     return EXIT_SUCCESS;
 }
