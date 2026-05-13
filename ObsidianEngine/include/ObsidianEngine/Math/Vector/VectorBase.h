@@ -7,6 +7,8 @@
 #include <iostream>
 #include <type_traits>
 #include <utility>
+#include <string>
+#include <sstream>
 
 #include "ObsidianEngine/Math/MathUtils.h"
 #include "ObsidianEngine/Math/Vector/Swizzle.h"
@@ -28,17 +30,17 @@ namespace ObsidianEngine::detail
 
 		static constexpr size_t Size = N;
 
-		Derived& self()
+		Derived& self() noexcept
 		{
 			return static_cast<Derived&>(*this);
 		}
 
-		const Derived& self() const
+		const Derived& self() const noexcept
 		{
 			return static_cast<const Derived&>(*this);
 		}
 
-		static constexpr Derived zero()
+		static constexpr Derived zero() noexcept
 		{
 			Derived result{};
 			for (size_t i = 0; i < N; ++i)
@@ -48,7 +50,7 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		static constexpr Derived one()
+		static constexpr Derived one() noexcept
 		{
 			Derived result{};
 			for (size_t i = 0; i < N; ++i)
@@ -58,8 +60,59 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
+		template<typename U>
+		requires std::is_arithmetic_v<U>
+		auto cast() const noexcept
+		{
+			Vector<U, N> result;
+
+			for (size_t i = 0; i < N; ++i)
+			{
+				result[i] = static_cast<U>(self()[i]);
+			}
+
+			return result;
+		}
+
+		template<size_t M>
+		auto resize() const noexcept
+		{
+			Vector<T, M> result;
+
+			constexpr size_t count = (N < M) ? N : M;
+
+			for (size_t i = 0; i < count; ++i)
+				result[i] = self()[i];
+
+			for (size_t i = count; i < M; ++i)
+				result[i] = T{};
+
+			return result;
+		}
+
+		template<size_t M, typename U>
+		requires std::is_arithmetic_v<U>
+		auto resizeAs() const noexcept
+		{
+			Vector<U, M> result;
+
+			constexpr size_t count = (N < M) ? N : M;
+
+			for (size_t i = 0; i < count; ++i)
+			{
+				result[i] = static_cast<U>(self()[i]);
+			}
+
+			for (size_t i = count; i < M; ++i)
+			{
+				result[i] = static_cast<U>(0);
+			}
+
+			return result;
+		}
+
 		template<StringLiteral Str>
-		auto swizzle()
+		auto swizzle() noexcept
 		{
 			constexpr size_t len = sizeof(Str.value) - 1;
 			static_assert(
@@ -74,7 +127,7 @@ namespace ObsidianEngine::detail
 		}
 
 		template<StringLiteral Str, typename... Ts>
-		Derived set(Ts... vals) const
+		Derived set(Ts... vals) const noexcept
 		{
 			constexpr size_t len = sizeof(Str.value) - 1;
 			static_assert(len == sizeof...(Ts), "Argument count must match swizzle length!");
@@ -104,49 +157,44 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		T& operator[](size_t i)
+		T& operator[](size_t i) noexcept
 		{
 			assert(i < N && "Vector index out of range!");
 			return self().data[i];
 		}
 
-		const T& operator[](size_t i) const
+		const T& operator[](size_t i) const noexcept
 		{
 			assert(i < N && "Vector index out of range!");
 			return self().data[i];
 		}
 
-		Derived operator+(const Derived& rhs) const
+		Derived& mulAssign(T scalar) noexcept
 		{
-			Derived result{};
 			for (size_t i = 0; i < N; i++)
 			{
-				result[i] = self()[i] + rhs[i];
+				self()[i] *= scalar;
 			}
-			return result;
+			return self();
 		}
 
-		Derived operator-(const Derived& rhs) const
+		Derived mul(T scalar) const noexcept
 		{
-			Derived result{};
-			for (size_t i = 0; i < N; i++)
-			{
-				result[i] = self()[i] - rhs[i];
-			}
-			return result;
+			Derived result = self();
+			return result.mulAssign(scalar);
 		}
 
-		Derived operator*(T scalar) const
+		Derived operator*(T scalar) const noexcept
 		{
-			Derived result{};
-			for (size_t i = 0; i < N; i++)
-			{
-				result[i] = self()[i] * scalar;
-			}
-			return result;
+			return mul(scalar);
 		}
 
-		Derived& operator*=(const Derived& rhs)
+		Derived& operator*=(T scalar)
+		{
+			return mulAssign(scalar);
+		}
+
+		Derived& mulAssign(const Derived& rhs) noexcept
 		{
 			for (size_t i = 0; i < N; i++)
 			{
@@ -155,38 +203,73 @@ namespace ObsidianEngine::detail
 			return self();
 		}
 
-		Derived operator*(const Derived& rhs) const
+		Derived mul(const Derived& rhs) const noexcept
 		{
-			Derived result{};
-			for (size_t i = 0; i < N; i++)
-			{
-				result[i] = self()[i] * rhs[i];
-			}
-			return result;
+			Derived result = self();
+			return result.mulAssign(rhs);
 		}
 
-		Derived operator/(T scalar) const
+		Derived operator*(const Derived& rhs) const noexcept
 		{
-			if constexpr (std::is_floating_point_v<T>)
-			{
-				assert(Math<T>::abs(scalar) > Math<T>::Epsilon &&
-					"Division by zero!");
-			}
-			else
-			{
-				assert(scalar != static_cast<T>(0) &&
-					"Division by zero!");
-			}
-
-			Derived result{};
-			for (size_t i = 0; i < N; i++)
-			{
-				result[i] = self()[i] / scalar;
-			}
-			return result;
+			return mul(rhs);
 		}
 
-		Derived operator-() const
+		Derived& operator*=(const Derived& rhs) noexcept
+		{
+			return mulAssign(rhs);
+		}
+
+		Derived& addAssign(const Derived& rhs) noexcept
+		{
+			for (size_t i = 0; i < N; i++)
+			{
+				self()[i] += rhs[i];
+			}
+			return self();
+		}
+
+		Derived add(const Derived& rhs) const noexcept
+		{
+			Derived result = self();
+			return result.addAssign(rhs);
+		}
+
+		Derived operator+(const Derived& rhs) const noexcept
+		{
+			return add(rhs);
+		}
+
+		Derived& operator+=(const Derived& rhs) noexcept
+		{
+			return addAssign(rhs);
+		}
+
+		Derived& subtractAssign(const Derived& rhs) noexcept
+		{
+			for (size_t i = 0; i < N; i++)
+			{
+				self()[i] -= rhs[i];
+			}
+			return self();
+		}
+
+		Derived subtract(const Derived& rhs) const noexcept
+		{
+			Derived result = self();
+			return result.subtractAssign(rhs);
+		}
+
+		Derived operator-(const Derived& rhs) const noexcept
+		{
+			return subtract(rhs);
+		}
+
+		Derived& operator-=(const Derived& rhs) noexcept
+		{
+			return subtractAssign(rhs);
+		}
+
+		Derived negate() const noexcept requires std::is_signed_v<T>
 		{
 			Derived result{};
 			for (size_t i = 0; i < N; i++)
@@ -196,143 +279,141 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		Derived& operator+=(const Derived& rhs)
+		Derived operator-() const noexcept requires std::is_signed_v<T>
 		{
-			for (size_t i = 0; i < N; i++)
-			{
-				self()[i] += rhs[i];
-			}
-			return self();
+			return negate();
 		}
 
-		Derived& operator-=(const Derived& rhs)
-		{
-			for (size_t i = 0; i < N; i++)
-			{
-				self()[i] -= rhs[i];
-			}
-			return self();
-		}
-
-		Derived& operator*=(T scalar)
-		{
-			for (size_t i = 0; i < N; i++)
-			{
-				self()[i] *= scalar;
-			}
-			return self();
-		}
-
-		Derived& operator/=(T scalar)
+		Derived& divideAssign(T scalar) noexcept
 		{
 			if constexpr (std::is_floating_point_v<T>)
 			{
-				assert(Math<T>::abs(scalar) > Math<T>::Epsilon &&
-					"Division by zero!");
+				assert(Math<T>::abs(scalar) > Math<T>::Epsilon && "Division by zero!");
+				T invScalar = static_cast<T>(1) / scalar;
+				for (size_t i = 0; i < N; i++) 
+				{
+					self()[i] *= invScalar;
+				}
 			}
 			else
 			{
-				assert(scalar != static_cast<T>(0) &&
-					"Division by zero!");
-			}
+				assert(scalar != static_cast<T>(0) && "Division by zero!");
 
-			for (size_t i = 0; i < N; i++)
-			{
-				self()[i] /= scalar;
+				for (size_t i = 0; i < N; i++)
+				{
+					self()[i] /= scalar;
+				}
 			}
 			return self();
 		}
 
+		Derived divide(T scalar) const noexcept
+		{
+			Derived result = self();
+			return result.divideAssign(scalar);
+		}
+
+		Derived operator/(T scalar) const noexcept
+		{
+			return divide(scalar);
+		}
+
+		Derived& operator/=(T scalar) noexcept
+		{
+			return divideAssign(scalar);
+		}
+
 		template<typename R>
-		friend auto operator*(R scalar, const Derived& v) -> std::enable_if_t<std::is_arithmetic_v<R>, Derived>
+		friend auto operator*(R scalar, const Derived& v) noexcept -> std::enable_if_t<std::is_arithmetic_v<R>, Derived>
 		{
 			static_assert(std::is_arithmetic_v<R>);
 			return v * static_cast<T>(scalar);
 		}
 
-		friend std::ostream& operator<<(std::ostream& os, const Derived& v)
+		std::string toString() const
 		{
-			os << "(";
+			std::stringstream ss;
 
+			ss << "(";
 			for (size_t i = 0; i < N; i++)
 			{
-				os << v.self()[i];
+				ss << self()[i];
 
 				if (i != N - 1)
 				{
-					os << ", ";
+					ss << ", ";
 				}
 			}
+			ss << ")";
 
-			os << ")";
-
-			return os;
+			return ss.str();
 		}
 
-		bool equals(const Derived& rhs) const
+		friend std::ostream& operator<<(std::ostream& os, const Derived& v)
+		{
+			return os << v.toString();
+		}
+
+		static bool isEqual(const Derived& lhs, const Derived& rhs, T epsilon = Math<T>::Epsilon) noexcept
 		{
 			for (size_t i = 0; i < N; i++)
 			{
-				if constexpr (std::is_floating_point_v<T>)
-				{
-					if (Math<T>::abs(self()[i] - rhs[i]) > Math<T>::Epsilon)
-						return false;
-				}
-				else
-				{
-					if (self()[i] != rhs[i])
-						return false;
-				}
+				if (!Math<T>::isEqual(lhs[i], rhs[i], epsilon)) return false;
 			}
 
 			return true;
 		}
 
-		bool operator==(const Derived& rhs) const
+		bool equals(const Derived& rhs, T epsilon = Math<T>::Epsilon) const noexcept
+		{
+			return isEqual(self(), rhs, epsilon);
+		}
+
+		bool operator==(const Derived& rhs) const noexcept
 		{
 			return equals(rhs);
 		}
 
-		bool operator!=(const Derived& rhs) const
+		bool operator!=(const Derived& rhs) const noexcept
 		{
 			return !equals(rhs);
 		}
 
-		detail::Matrix<N, 1, T> asColumnMatrix() const
+		detail::Matrix<N, 1, T> asColumnMatrix() const noexcept
 		{
 			detail::Matrix<N, 1, T> m;
 			m.setColumn(0, self());
 			return m;
 		}
 
-		detail::Matrix<1, N, T> asRowMatrix() const
+		detail::Matrix<1, N, T> asRowMatrix() const noexcept
 		{
 			detail::Matrix<1, N, T> m;
 			m.setRow(0, self());
 			return m;
 		}
 
-		T dot(const Derived& rhs) const
+		T dot(const Derived& rhs) const noexcept
 		{
 			return Derived::dot(self(), rhs);
 		}
 
-		Matrix<N, N, T> outer(const Derived& rhs) const
+		Matrix<N, N, T> outer(const Derived& rhs) const noexcept
 		{
 			return Derived::outer(self(), rhs);
 		}
 
-		T sqrMagnitude() const
+		T sqrMagnitude() const noexcept
 		{
 			return Derived::dot(self(), self());
 		}
 
-		FloatingPointT magnitude() const
+		FloatingPointT magnitude() const noexcept
 		{
 			return Math<FloatingPointT>::sqrt(sqrMagnitude());
 		}
 
-		auto normalized() const
+		auto normalized() const noexcept
 		{
 			using FPT = std::common_type_t<T, float>;
 			using ReturnVec = Vector<FPT, N>;
@@ -351,7 +432,7 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		void normalize() requires std::is_floating_point_v<T>
+		void normalize() noexcept requires std::is_floating_point_v<T>
 		{
 			T magSq = sqrMagnitude();
 
@@ -364,7 +445,7 @@ namespace ObsidianEngine::detail
 			self() /= Math<T>::sqrt(magSq);
 		}
 
-		static T dot(const Derived& a, const Derived& b)
+		static T dot(const Derived& a, const Derived& b) noexcept
 		{
 			T dotProduct = 0;
 			for (size_t i = 0; i < N; i++)
@@ -374,7 +455,7 @@ namespace ObsidianEngine::detail
 			return dotProduct;
 		}
 
-		static Matrix<N, N, T> outer(const Derived& a, const Derived& b)
+		static Matrix<N, N, T> outer(const Derived& a, const Derived& b) noexcept
 		{
 			return a.asColumnMatrix() * b.asRowMatrix();
 		}
@@ -390,51 +471,51 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		static FloatingPointT distance(const Derived& a, const Derived& b)
+		static FloatingPointT distance(const Derived& a, const Derived& b) noexcept
 		{
 			return Math<FloatingPointT>::sqrt(sqrDistance(a, b));
 		}
 
-		Derived& floor() requires std::is_floating_point_v<T>
+		Derived& floor() noexcept requires std::is_floating_point_v<T>
 		{
 			for (size_t i = 0; i < N; i++) self()[i] = Math<T>::floor(self()[i]);
 			return self();
 		}
 
-		static Derived floor(const Derived& v) requires std::is_floating_point_v<T>
+		static Derived floor(const Derived& v) noexcept requires std::is_floating_point_v<T>
 		{
 			Derived result{};
 			for (size_t i = 0; i < N; i++) result[i] = Math<T>::floor(v[i]);
 			return result;
 		}
 
-		Derived& ceil() requires std::is_floating_point_v<T>
+		Derived& ceil() noexcept requires std::is_floating_point_v<T>
 		{
 			for (size_t i = 0; i < N; i++) self()[i] = Math<T>::ceil(self()[i]);
 			return self();
 		}
 
-		static Derived ceil(const Derived& v) requires std::is_floating_point_v<T>
+		static Derived ceil(const Derived& v) noexcept requires std::is_floating_point_v<T>
 		{
 			Derived result{};
 			for (size_t i = 0; i < N; i++) result[i] = Math<T>::ceil(v[i]);
 			return result;
 		}
 
-		Derived& round() requires std::is_floating_point_v<T>
+		Derived& round() noexcept requires std::is_floating_point_v<T>
 		{
 			for (size_t i = 0; i < N; i++) self()[i] = Math<T>::round(self()[i]);
 			return self();
 		}
 
-		static Derived round(const Derived& v) requires std::is_floating_point_v<T>
+		static Derived round(const Derived& v) noexcept requires std::is_floating_point_v<T>
 		{
 			Derived result{};
 			for (size_t i = 0; i < N; i++) result[i] = Math<T>::round(v[i]);
 			return result;
 		}
 
-		static VectorInt floorToInt(const Derived& v) requires std::is_floating_point_v<T>
+		static VectorInt floorToInt(const Derived& v) noexcept requires std::is_floating_point_v<T>
 		{
 			VectorInt result;
 			for (size_t i = 0; i < N; i++)
@@ -444,7 +525,7 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		VectorInt floorToInt() const requires std::is_floating_point_v<T> 
+		VectorInt floorToInt() const noexcept requires std::is_floating_point_v<T>
 		{
 			VectorInt result;
 			for (size_t i = 0; i < N; i++) 
@@ -454,7 +535,7 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		static VectorInt ceilToInt(const Derived& v) requires std::is_floating_point_v<T>
+		static VectorInt ceilToInt(const Derived& v) noexcept requires std::is_floating_point_v<T>
 		{
 			VectorInt result;
 			for (size_t i = 0; i < N; i++)
@@ -464,7 +545,7 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		VectorInt ceilToInt() const requires std::is_floating_point_v<T>
+		VectorInt ceilToInt() const noexcept requires std::is_floating_point_v<T>
 		{
 			VectorInt result;
 			for (size_t i = 0; i < N; i++)
@@ -474,7 +555,7 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		static VectorInt roundToInt(const Derived& v) requires std::is_floating_point_v<T>
+		static VectorInt roundToInt(const Derived& v) noexcept requires std::is_floating_point_v<T>
 		{
 			VectorInt result;
 			for (size_t i = 0; i < N; i++)
@@ -484,7 +565,7 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		VectorInt roundToInt() const requires std::is_floating_point_v<T>
+		VectorInt roundToInt() const noexcept requires std::is_floating_point_v<T>
 		{
 			VectorInt result;
 			for (size_t i = 0; i < N; i++)
@@ -494,7 +575,7 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		static Derived min(const Derived& a, const Derived& b)
+		static Derived min(const Derived& a, const Derived& b) noexcept
 		{
 			Derived result{};
 			for (size_t i = 0; i < N; i++)
@@ -504,7 +585,7 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		static Derived max(const Derived& a, const Derived& b)
+		static Derived max(const Derived& a, const Derived& b) noexcept
 		{
 			Derived result{};
 			for (size_t i = 0; i < N; i++)
@@ -514,29 +595,29 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		static Derived lerpUnclamped(const Derived& a, const Derived& b, T t) requires std::is_floating_point_v<T>
+		static Derived lerpUnclamped(const Derived& a, const Derived& b, T t) noexcept requires std::is_floating_point_v<T>
 		{
 			return a + t * (b - a);
 		}
 
-		static Derived lerp(const Derived& a, const Derived& b, T t) requires std::is_floating_point_v<T>
+		static Derived lerp(const Derived& a, const Derived& b, T t) noexcept requires std::is_floating_point_v<T>
 		{
 			return lerpUnclamped(a, b, std::clamp(t, static_cast<T>(0), static_cast<T>(1)));
 		}
 
-		static Derived nlerpUnclamped(const Derived& a, const Derived& b, T t) requires std::is_floating_point_v<T>
+		static Derived nlerpUnclamped(const Derived& a, const Derived& b, T t) noexcept requires std::is_floating_point_v<T>
 		{
 			Derived v = lerpUnclamped(a, b, t);
 			if (v.sqrMagnitude() < static_cast<T>(1e-7)) return Derived::zero();
 			return v.normalized();
 		}
 
-		static Derived nlerp(const Derived& a, const Derived& b, T t) requires std::is_floating_point_v<T>
+		static Derived nlerp(const Derived& a, const Derived& b, T t) noexcept requires std::is_floating_point_v<T>
 		{
 			return nlerpUnclamped(a, b, std::clamp(t, static_cast<T>(0), static_cast<T>(1)));
 		}
 
-		static Derived slerpUnclamped(const Derived& a, const Derived& b, T t) requires std::is_floating_point_v<T>
+		static Derived slerpUnclamped(const Derived& a, const Derived& b, T t) noexcept requires std::is_floating_point_v<T>
 		{
 			Derived v1 = a.normalized();
 			Derived v2 = b.normalized();
@@ -565,12 +646,12 @@ namespace ObsidianEngine::detail
 			return ((v1 * s0) + (v2 * s1)) * finalMag;
 		}
 
-		static Derived slerp(const Derived& a, const Derived& b, T t) requires std::is_floating_point_v<T>
+		static Derived slerp(const Derived& a, const Derived& b, T t) noexcept requires std::is_floating_point_v<T>
 		{
 			return slerpUnclamped(a, b, std::clamp(t, static_cast<T>(0), static_cast<T>(1)));
 		}
 
-		static Derived clamp(const Derived& v, const Derived& min, const Derived& max)
+		static Derived clamp(const Derived& v, const Derived& min, const Derived& max) noexcept
 		{
 			Derived result{};
 			for (size_t i = 0; i < N; i++)
@@ -580,7 +661,7 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		static Derived clamp(const Derived& v, T min, T max)
+		static Derived clamp(const Derived& v, T min, T max) noexcept
 		{
 			Derived result{};
 			for (size_t i = 0; i < N; i++)
@@ -590,29 +671,9 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		static Derived scale(const Derived& a, const Derived& b)
-		{
-			Derived result{};
-			for (size_t i = 0; i < N; i++)
-			{
-				result[i] = a[i] * b[i];
-			}
-			return result;
-		}
-
-		static Derived scale(const Derived& a, T scale)
-		{
-			Derived result{};
-			for (size_t i = 0; i < N; i++)
-			{
-				result[i] = a[i] * scale;
-			}
-			return result;
-		}
-
 	private:
 		template<StringLiteral Str, size_t... I>
-		auto makeSwizzle(std::index_sequence<I...>)
+		auto makeSwizzle(std::index_sequence<I...>) noexcept
 		{
 			return SwizzleProxy<
 				T,

@@ -5,9 +5,9 @@
 
 namespace ObsidianEngine
 {
-	using Quaternionf = detail::Quaternion<float>;
-	using Quaterniond = detail::Quaternion<double>;
-	using Quaternion = Quaternionf;
+	using QuaternionFloat = detail::Quaternion<float>;
+	using QuaternionDouble= detail::Quaternion<double>;
+	using Quaternion = QuaternionFloat;
 }
 
 #endif

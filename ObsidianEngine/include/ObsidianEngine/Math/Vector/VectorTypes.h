@@ -8,21 +8,21 @@
 
 namespace ObsidianEngine
 {
-	using Vector2f = detail::Vector<float, 2>;
-	using Vector3f = detail::Vector<float, 3>;
-	using Vector4f = detail::Vector<float, 4>;
+	using Vector2Float = detail::Vector<float, 2>;
+	using Vector3Float = detail::Vector<float, 3>;
+	using Vector4Float = detail::Vector<float, 4>;
 
-	using Vector2d = detail::Vector<double, 2>;
-	using Vector3d = detail::Vector<double, 3>;
-	using Vector4d = detail::Vector<double, 4>;
+	using Vector2Double = detail::Vector<double, 2>;
+	using Vector3Double = detail::Vector<double, 3>;
+	using Vector4Double = detail::Vector<double, 4>;
 
-	using Vector2i = detail::Vector<int, 2>;
-	using Vector3i = detail::Vector<int, 3>;
-	using Vector4i = detail::Vector<int, 4>;
+	using Vector2Int = detail::Vector<int, 2>;
+	using Vector3Int = detail::Vector<int, 3>;
+	using Vector4Int = detail::Vector<int, 4>;
 
-	using Vector2 = Vector2f;
-	using Vector3 = Vector3f;
-	using Vector4 = Vector4f;
+	using Vector2 = Vector2Float;
+	using Vector3 = Vector3Float;
+	using Vector4 = Vector4Float;
 }
 
 #endif

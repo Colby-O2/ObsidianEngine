@@ -1,6 +1,5 @@
 #include "doctest/doctest.h"
 
-
 #include "helpers.h"
 #include "ObsidianEngine/Math/Math.h"
 #include <string>
@@ -623,7 +622,7 @@ TEST_SUITE("Math")
             SUBCASE("Looking Forward")
             {
                 Vector<T, 3> target(0, 0, 1);
-                Quaternion<T> q = Quaternion<T>::lookAt(target, worldUp);
+                Quaternion<T> q = Quaternion<T>::lookRotation(target, worldUp);
                 CHECK_CLOSE(q.length(), 1.0f);
 
                 Vector<T, 3> result = q * Vector<T, 3>(0, 0, 1);
@@ -632,7 +631,7 @@ TEST_SUITE("Math")
             SUBCASE("Looking Right")
             {
                 Vector<T, 3> target(1, 0, 0);
-                Quaternion<T> q = Quaternion<T>::lookAt(target, worldUp);
+                Quaternion<T> q = Quaternion<T>::lookRotation(target, worldUp);
                 CHECK_CLOSE(q.length(), 1.0f);
 
                 Vector<T, 3> result = q * Vector<T, 3>(0, 0, 1);
@@ -641,7 +640,7 @@ TEST_SUITE("Math")
             SUBCASE("Looking Backwards")
             {
                 Vector<T, 3> target(0, 0, -1);
-                Quaternion<T> q = Quaternion<T>::lookAt(target, worldUp);
+                Quaternion<T> q = Quaternion<T>::lookRotation(target, worldUp);
                 CHECK_CLOSE(q.length(), 1.0f);
 
                 Vector<T, 3> result = q * Vector<T, 3>(0, 0, 1);
@@ -650,7 +649,7 @@ TEST_SUITE("Math")
             SUBCASE("Looking Slightly Off Vertical")
             {
                 Vector<T, 3> target(0.001f, 1.0f, 0.0f);
-                Quaternion<T> q = Quaternion<T>::lookAt(target, worldUp);
+                Quaternion<T> q = Quaternion<T>::lookRotation(target, worldUp);
                 CHECK_CLOSE(q.length(), 1.0f);
 
                 Vector<T, 3> result = q * Vector<T, 3>(0, 0, 1);
@@ -658,7 +657,7 @@ TEST_SUITE("Math")
             }
             SUBCASE("Zero Direction")
             {
-                Quaternion<T> q = Quaternion<T>::lookAt(Vector<T, 3>(0, 0, 0), worldUp);
+                Quaternion<T> q = Quaternion<T>::lookRotation(Vector<T, 3>(0, 0, 0), worldUp);
                 CHECK_CLOSE(q.length(), 1.0f);
 
                 CHECK_CLOSE_QUATERNIONS(q, Quaternion<T>::identity());
@@ -668,7 +667,7 @@ TEST_SUITE("Math")
                 Vector<T, 3> worldUp(0, 1, 0);
                 Vector<T, 3> target(0, 1, 0);
 
-                Quaternion<T> q = Quaternion<T>::lookAt(target, worldUp);
+                Quaternion<T> q = Quaternion<T>::lookRotation(target, worldUp);
                 CHECK_CLOSE(q.length(), 1.0f);
 
                 Vector<T, 3> result = q * Vector<T, 3>(0, 0, 1);
@@ -682,7 +681,7 @@ TEST_SUITE("Math")
             SUBCASE("Looking Straight Down")
             {
                 Vector<T, 3> target(0, -1, 0);
-                Quaternion<T> q = Quaternion<T>::lookAt(target, worldUp);
+                Quaternion<T> q = Quaternion<T>::lookRotation(target, worldUp);
                 CHECK_CLOSE(q.length(), 1.0f);
 
                 Vector<T, 3> result = q * Vector<T, 3>(0, 0, 1);
@@ -698,7 +697,7 @@ TEST_SUITE("Math")
                 Vector<T, 3> tiltedUp = Vector<T, 3>(1, 1, 0).normalized();
                 Vector<T, 3> target(0, 0, 1);
 
-                Quaternion<T> q = Quaternion<T>::lookAt(target, tiltedUp);
+                Quaternion<T> q = Quaternion<T>::lookRotation(target, tiltedUp);
                 CHECK_CLOSE(q.length(), 1.0f);
 
                 Vector<T, 3> forwardResult = q * Vector<T, 3>(0, 0, 1);
@@ -712,7 +711,7 @@ TEST_SUITE("Math")
                 Vector<T, 3> target(10.0f, 10.0f, 10.0f);
                 Vector<T, 3> up(0.0f, 50.0f, 0.0f);
 
-                Quaternion<T> q = Quaternion<T>::lookAt(target, up);
+                Quaternion<T> q = Quaternion<T>::lookRotation(target, up);
                 CHECK_CLOSE(q.length(), 1.0f);
 
                 Vector<T, 3> result = q * Vector<T, 3>(0, 0, 1);

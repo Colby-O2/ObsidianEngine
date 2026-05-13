@@ -23,9 +23,9 @@ namespace ObsidianEngine::detail
 
 		std::array<T, Rows* Cols> data;
 
-		constexpr Matrix() : data{ 0 } {}
+		constexpr Matrix() noexcept : data{} {}
 
-		constexpr Matrix(std::initializer_list<Vector<T, Rows>> columns) : data{}
+		constexpr Matrix(std::initializer_list<Vector<T, Rows>> columns) noexcept : data{}
 		{
 			size_t c = 0;
 			for (const auto& colVec : columns)
@@ -41,19 +41,76 @@ namespace ObsidianEngine::detail
 			}
 		}
 
-		template<typename... Args>
-		constexpr Matrix(Args... args) : data{ static_cast<T>(args)... }
-		{
-			static_assert(sizeof...(Args) == Rows * Cols, "Matrix constructor must receive exactly Rows * Cols arguments!");
-		}
+		constexpr Matrix(const Matrix&) noexcept = default;
 
 		template<typename U>
-		constexpr Matrix(const Matrix<Rows, Cols, U>& other) : data{}
+		requires (!std::is_same_v<U, T>)
+		constexpr explicit Matrix(const Matrix<Rows, Cols, U>& other) noexcept : data{}
 		{
 			for (size_t i = 0; i < Rows * Cols; ++i)
 			{
 				data[i] = static_cast<T>(other.data[i]);
 			}
+		}
+
+		template<typename... Args>
+		requires (sizeof...(Args) == Rows * Cols) && (std::is_convertible_v<Args, T> && ...)
+		constexpr Matrix(Args... args) noexcept : data{ static_cast<T>(args)... }
+		{
+			static_assert(sizeof...(Args) == Rows * Cols, "Matrix constructor must receive exactly Rows * Cols arguments!");
+		}
+
+		template<typename U>
+		requires std::is_arithmetic_v<U>
+		auto cast() const noexcept
+		{
+			Matrix<Rows, Cols, U> result;
+
+			for (size_t i = 0; i < Rows * Cols; ++i)
+			{
+				result.data[i] = static_cast<U>(data[i]);
+			}
+
+			return result;
+		}
+
+		template<size_t R, size_t C>
+		constexpr auto reshape() const noexcept
+		{
+			Matrix<R, C, T> result{};
+
+			constexpr size_t minR = (R < Rows) ? R : Rows;
+			constexpr size_t minC = (C < Cols) ? C : Cols;
+
+			for (size_t r = 0; r < minR; ++r)
+			{
+				for (size_t c = 0; c < minC; ++c)
+				{
+					result(r, c) = (*this)(r, c);
+				}
+			}
+
+			return result;
+		}
+
+		template<size_t R, size_t C, typename U>
+		requires std::is_arithmetic_v<U>
+		constexpr auto reshapeAs() const noexcept
+		{
+			Matrix<R, C, U> result{};
+
+			constexpr size_t minR = (R < Rows) ? R : Rows;
+			constexpr size_t minC = (C < Cols) ? C : Cols;
+
+			for (size_t r = 0; r < minR; ++r)
+			{
+				for (size_t c = 0; c < minC; ++c)
+				{
+					result(r, c) = static_cast<U>((*this)(r, c));
+				}
+			}
+
+			return result;
 		}
 
 		static constexpr Matrix fromRows(std::initializer_list<Vector<T, Cols>> rows)
@@ -442,63 +499,6 @@ namespace ObsidianEngine::detail
 			result[c] = sum;
 		}
 
-		return result;
-	}
-
-	template<size_t R, size_t K, size_t C, typename T1, typename T2>
-	inline auto operator*(const Matrix<R, K, T1>& lhs, const Matrix<K, C, T2>& rhs) -> Matrix<R, C, std::common_type_t<T1, T2>>
-	{
-		using ResultT = std::common_type_t<T1, T2>;
-		Matrix<R, C, ResultT> result;
-
-		for (size_t r = 0; r < R; ++r)
-		{
-			for (size_t c = 0; c < C; ++c)
-			{
-				ResultT sum = 0;
-				for (size_t k = 0; k < K; ++k)
-				{
-					sum += static_cast<ResultT>(lhs(r, k)) * static_cast<ResultT>(rhs(k, c));
-				}
-				result(r, c) = sum;
-			}
-		}
-		return result;
-	}
-
-	template<size_t R, size_t C, typename T1, typename T2>
-	inline auto operator*(const Matrix<R, C, T1>& m, const Vector<T2, C>& v)-> Vector<std::common_type_t<T1, T2>, R>
-	{
-		using ResultT = std::common_type_t<T1, T2>;
-		Vector<ResultT, R> result;
-
-		for (size_t r = 0; r < R; ++r)
-		{
-			ResultT sum = 0;
-			for (size_t c = 0; c < C; ++c)
-			{
-				sum += static_cast<ResultT>(m(r, c)) * static_cast<ResultT>(v[c]);
-			}
-			result[r] = sum;
-		}
-		return result;
-	}
-
-	template<size_t R, size_t C, typename T1, typename T2>
-	inline auto operator*(const Vector<T1, R>& v, const Matrix<R, C, T2>& m) -> Vector<std::common_type_t<T1, T2>, C>
-	{
-		using ResultT = std::common_type_t<T1, T2>;
-		Vector<ResultT, C> result;
-
-		for (size_t c = 0; c < C; ++c)
-		{
-			ResultT sum = 0;
-			for (size_t r = 0; r < R; ++r)
-			{
-				sum += static_cast<ResultT>(v[r]) * static_cast<ResultT>(m(r, c));
-			}
-			result[c] = sum;
-		}
 		return result;
 	}
 }

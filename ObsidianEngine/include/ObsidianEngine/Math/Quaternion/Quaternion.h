@@ -9,6 +9,8 @@
 #include <iomanip>
 #include <numbers>
 #include <limits>
+#include <string>
+#include <sstream>
 
 namespace ObsidianEngine
 {
@@ -38,18 +40,32 @@ namespace ObsidianEngine::detail
 			T data[4];
 		};
 
-		constexpr Quaternion() : x(Math<T>::val(Math<T>::val(0))), y(Math<T>::val(0)), z(Math<T>::val(0)), w(Math<T>::val(Math<T>::val(1))) {}
-		constexpr Quaternion(T x, T y, T z, T w) : x(x), y(y), z(z), w(w) {}
-		constexpr Quaternion(const Vector<T, 4>& v) : x(v.x), y(v.y), z(v.z), w(v.w) {}
+		constexpr Quaternion() noexcept : x(Math<T>::val(Math<T>::val(0))), y(Math<T>::val(0)), z(Math<T>::val(0)), w(Math<T>::val(Math<T>::val(1))) {}
+		constexpr Quaternion(T x, T y, T z, T w) noexcept : x(x), y(y), z(z), w(w) {}
+		constexpr Quaternion(const Vector<T, 4>& v) noexcept : x(v.x), y(v.y), z(v.z), w(v.w) {}
 		template<typename U>
-		constexpr Quaternion(const Quaternion<U>& other) : x(static_cast<T>(other.x)), y(static_cast<T>(other.y)), z(static_cast<T>(other.z)), w(static_cast<T>(other.w)) {}
+		constexpr explicit Quaternion(const Quaternion<U>& other) noexcept : x(static_cast<T>(other.x)), y(static_cast<T>(other.y)), z(static_cast<T>(other.z)), w(static_cast<T>(other.w)) {}
 
-		static constexpr Quaternion identity()
+		template<typename U>
+		requires std::is_floating_point_v<U>
+		auto cast() const noexcept
+		{
+			Quaternion<U> result;
+
+			for (size_t i = 0; i < 4; ++i)
+			{
+				result[i] = static_cast<U>(data[i]);
+			}
+
+			return result;
+		}
+
+		static constexpr Quaternion identity() noexcept
 		{
 			return Quaternion(0, 0, 0, 1);
 		}
 
-		static Quaternion fromAxisAngle(const Vector<T, 3>& axis, T angleDegrees)
+		static Quaternion fromAxisAngle(const Vector<T, 3>& axis, T angleDegrees) noexcept
 		{
 			T sqrMag = axis.sqrMagnitude();
 			if (sqrMag < Math<T>::Epsilon)
@@ -65,7 +81,7 @@ namespace ObsidianEngine::detail
 			return Quaternion(normAxis.x * s, normAxis.y * s, normAxis.z * s, Math<T>::cos(halfAngle));
 		}
 
-		void toAxisAngle(Vector<T, 3>& outAxis, T& outAngleDegrees) const
+		void toAxisAngle(Vector<T, 3>& outAxis, T& outAngleDegrees) const noexcept
 		{
 			Quaternion q = *this;
 
@@ -97,7 +113,7 @@ namespace ObsidianEngine::detail
 			}
 		}
 
-		static T angle(const Quaternion& a, const Quaternion& b)
+		static T angle(const Quaternion& a, const Quaternion& b) noexcept
 		{
 			Quaternion q1 = a;
 			Quaternion q2 = b;
@@ -114,7 +130,7 @@ namespace ObsidianEngine::detail
 			return Math<T>::val(2) * Math<T>::acos(d) * Math<T>::Rad2Deg;
 		}
 
-		static Quaternion rotateTowards(const Quaternion& from, const Quaternion& to, T maxDegreesDelta)
+		static Quaternion rotateTowards(const Quaternion& from, const Quaternion& to, T maxDegreesDelta) noexcept
 		{
 			T totalAngle = angle(from, to);
 
@@ -128,7 +144,7 @@ namespace ObsidianEngine::detail
 			return slerp(from, to, t);
 		}
 
-		static Quaternion fromToRotation(const Vector<T, 3>& fromDirection, const Vector<T, 3>& toDirection)
+		Quaternion& setFromToRotation(const Vector<T, 3>& fromDirection, const Vector<T, 3>& toDirection) noexcept
 		{
 			Vector<T, 3> v0 = fromDirection.normalized();
 			Vector<T, 3> v1 = toDirection.normalized();
@@ -137,7 +153,8 @@ namespace ObsidianEngine::detail
 
 			if (dot >= Math<T>::AlmostOne)
 			{
-				return identity();
+				*this = identity();
+				return *this;
 			}
 
 			if (dot <= Math<T>::AlmostNegativeOne)
@@ -147,16 +164,31 @@ namespace ObsidianEngine::detail
 				{
 					axis = Vector<T, 3>::cross(Vector<T, 3>(0, 1, 0), v0);
 				}
-				return fromAxisAngle(axis.normalized(), Math<T>::val(180));
+				*this = fromAxisAngle(axis.normalized(), Math<T>::val(180));
+				this->normalize();
+
+				return *this;
 			}
 
 			Vector<T, 3> cross = Vector<T, 3>::cross(v0, v1);
-			Quaternion q(cross.x, cross.y, cross.z, dot + Math<T>::val(1));
 
-			return q.normalized();
+			this->x = cross.x;
+			this->y = cross.y;
+			this->z = cross.z;
+			this->w = dot + Math<T>::val(1);
+			this->normalize();
+
+			return *this;
 		}
 
-		static Quaternion fromEulerEx(T x, T y, T z, EulerOrder order)
+		static Quaternion fromToRotation(const Vector<T, 3>& fromDirection, const Vector<T, 3>& toDirection) noexcept
+		{
+			Quaternion result;
+			result.setFromToRotation(fromDirection, toDirection);
+			return result;
+		}
+
+		static Quaternion fromEulerEx(T x, T y, T z, EulerOrder order) noexcept
 		{
 			T factor = Math<T>::Deg2Rad * Math<T>::val(0.5);
 			T cx = Math<T>::cos(x * factor); T sx = Math<T>::sin(x * factor);
@@ -212,17 +244,17 @@ namespace ObsidianEngine::detail
 			}
 		}
 
-		static Quaternion fromEuler(T x, T y, T z)
+		static Quaternion fromEuler(T x, T y, T z) noexcept
 		{
 			return fromEulerEx(x, y, z, EulerOrder::ZYX);
 		}
 
-		static Quaternion fromEuler(const Vector<T, 3>& eulerAngles)
+		static Quaternion fromEuler(const Vector<T, 3>& eulerAngles) noexcept
 		{
 			return fromEuler(eulerAngles.x, eulerAngles.y, eulerAngles.z);
 		}
 
-		Vector<T, 3> toEulerEx(EulerOrder order) const
+		Vector<T, 3> toEulerEx(EulerOrder order) const noexcept
 		{
 			Vector<T, 3> euler;
 			T sqw = w * w; T sqx = x * x; T sqy = y * y; T sqz = z * z;
@@ -349,16 +381,17 @@ namespace ObsidianEngine::detail
 			return euler * Math<T>::Rad2Deg;
 		}
 
-		Vector<T, 3> toEuler() const
+		Vector<T, 3> toEuler() const noexcept
 		{
 			return toEulerEx(EulerOrder::ZXY);
 		}
 
-		static Quaternion lookAt(const Vector<T, 3>& direction, const Vector<T, 3>& up)
+		Quaternion& setLookRotation(const Vector<T, 3>& direction, const Vector<T, 3>& up) noexcept
 		{
 			if (direction.sqrMagnitude() < Math<T>::Epsilon)
 			{
-				return identity();
+				*this = identity();
+				return *this;
 			}
 
 			Vector<T, 3> forward = direction.normalized();
@@ -381,20 +414,28 @@ namespace ObsidianEngine::detail
 			rot(0, 1) = actualUp.x; rot(1, 1) = actualUp.y; rot(2, 1) = actualUp.z;
 			rot(0, 2) = forward.x;  rot(1, 2) = forward.y;  rot(2, 2) = forward.z;
 
-			return fromMatrix(rot);
+			*this = fromMatrix(rot);
+			return *this;
 		}
 
-		T lengthSquared() const
+		static Quaternion lookRotation(const Vector<T, 3>& direction, const Vector<T, 3>& up) noexcept
+		{
+			Quaternion q;
+			q.setLookRotation(direction, up);
+			return q;
+		}
+
+		T lengthSquared() const noexcept
 		{
 			return this->dot(*this);
 		}
 
-		T length() const
+		T length() const noexcept
 		{
 			return Math<T>::sqrt(lengthSquared());
 		}
 
-		void normalize()
+		void normalize() noexcept
 		{
 			T len = length();
 			if (len > Math<T>::Epsilon)
@@ -408,19 +449,19 @@ namespace ObsidianEngine::detail
 			}
 		}
 
-		Quaternion normalized() const
+		Quaternion normalized() const noexcept
 		{
 			Quaternion q = *this;
 			q.normalize();
 			return q;
 		}
 
-		constexpr Quaternion conjugate() const
+		constexpr Quaternion conjugate() const noexcept
 		{
 			return Quaternion(-x, -y, -z, w);
 		}
 
-		constexpr Quaternion inverse() const
+		constexpr Quaternion inverse() const noexcept
 		{
 			T norm = lengthSquared();
 			if (norm > 0)
@@ -431,7 +472,7 @@ namespace ObsidianEngine::detail
 			return identity();
 		}
 
-		Vector<T, 3> rotate(const Vector<T, 3>& v) const
+		Vector<T, 3> rotate(const Vector<T, 3>& v) const noexcept
 		{
 			assert(Math<T>::abs(lengthSquared() - 1.0f) < 0.01f && "Quaternion must be normalized to rotate a vector!");
 
@@ -440,21 +481,21 @@ namespace ObsidianEngine::detail
 			return v + (t * w) + Vector<T, 3>::cross(q_vec, t);
 		}
 
-		Vector<T, 3> forward() const { return rotate(Vector<T, 3>(0, 0, 1)); }
-		Vector<T, 3> up()      const { return rotate(Vector<T, 3>(0, 1, 0)); }
-		Vector<T, 3> right()   const { return rotate(Vector<T, 3>(1, 0, 0)); }
+		Vector<T, 3> forward() const noexcept { return rotate(Vector<T, 3>(0, 0, 1)); }
+		Vector<T, 3> up()      const noexcept { return rotate(Vector<T, 3>(0, 1, 0)); }
+		Vector<T, 3> right()   const noexcept { return rotate(Vector<T, 3>(1, 0, 0)); }
 
-		static T dot(const Quaternion& a, const Quaternion& b)
+		static T dot(const Quaternion& a, const Quaternion& b) noexcept
 		{
 			return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
 		}
 
-		T dot(const Quaternion& other) const
+		T dot(const Quaternion& other) const noexcept
 		{
 			return x * other.x + y * other.y + z * other.z + w * other.w;
 		}
 
-		Matrix4x4<T> toMatrix() const
+		Matrix4x4<T> toMatrix() const noexcept
 		{
 			T xx = x * x; T yy = y * y; T zz = z * z;
 			T xy = x * y; T xz = x * z; T yz = y * z;
@@ -475,7 +516,7 @@ namespace ObsidianEngine::detail
 			return res;
 		}
 
-		static Quaternion fromMatrix(const Matrix4x4<T>& m)
+		static Quaternion fromMatrix(const Matrix4x4<T>& m) noexcept
 		{
 			auto rot = m.template slice<3, 3>(0, 0);
 
@@ -514,7 +555,7 @@ namespace ObsidianEngine::detail
 			return Quaternion(qx, qy, qz, qw).normalized();
 		}
 
-		static Quaternion nlerpUnclamped(const Quaternion& a, const Quaternion& b, T t)
+		static Quaternion nlerpUnclamped(const Quaternion& a, const Quaternion& b, T t) noexcept
 		{
 			T dot = Quaternion::dot(a, b);
 			T t1 = Math<T>::val(1) - t;
@@ -522,12 +563,12 @@ namespace ObsidianEngine::detail
 			return res.normalized();
 		}
 
-		static Quaternion nlerp(const Quaternion& a, const Quaternion& b, T t)
+		static Quaternion nlerp(const Quaternion& a, const Quaternion& b, T t) noexcept
 		{
 			return nlerpUnclamped(a, b, Math<T>::clamp(t, 0, 1));
 		}
 
-		static Quaternion slerpUnclamped(const Quaternion& a, const Quaternion& b, T t)
+		static Quaternion slerpUnclamped(const Quaternion& a, const Quaternion& b, T t) noexcept
 		{
 			T dot = Quaternion::dot(a, b);
 
@@ -555,46 +596,51 @@ namespace ObsidianEngine::detail
 			return ((a * s0) + (end * s1)).normalized();
 		}
 
-		static Quaternion slerp(const Quaternion& a, const Quaternion& b, T t)
+		static Quaternion slerp(const Quaternion& a, const Quaternion& b, T t) noexcept
 		{
 			return slerpUnclamped(a, b, Math<T>::clamp(t, 0, 1));
 		}
 
-		Quaternion operator*(const Quaternion& other) const
+		Quaternion operator*(const Quaternion& other) const noexcept
 		{
 			Quaternion res = *this;
 			res *= other;
 			return res;
 		}
 
-		Quaternion operator*(T scalar) const
+		Quaternion operator*(T scalar) const noexcept
 		{
 			Quaternion res = *this;
 			res *= scalar;
 			return res;
 		}
 
-		friend Quaternion operator*(T scalar, const Quaternion& q)
+		friend Quaternion operator*(T scalar, const Quaternion& q) noexcept
 		{
 			return q * scalar;
 		}
 
-		Quaternion operator+(const Quaternion& rhs) const
+		Vector<T, 3> operator*(const Vector<T, 3>& vec) const noexcept
+		{
+			return rotate(vec);
+		}
+
+		Quaternion operator+(const Quaternion& rhs) const noexcept
 		{
 			return Quaternion(x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w);
 		}
 
-		Quaternion operator-(const Quaternion& rhs) const
+		Quaternion operator-(const Quaternion& rhs) const noexcept
 		{
 			return Quaternion(x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w);
 		}
 
-		Quaternion operator-() const
+		Quaternion operator-() const noexcept
 		{
 			return Quaternion(-x, -y, -z, -w);
 		}
 
-		Quaternion& operator*=(const Quaternion& other)
+		Quaternion& operator*=(const Quaternion& other) noexcept
 		{
 			T tx = w * other.x + x * other.w + y * other.z - z * other.y;
 			T ty = w * other.y + y * other.w + z * other.x - x * other.z;
@@ -609,7 +655,7 @@ namespace ObsidianEngine::detail
 			return *this;
 		}
 
-		Quaternion& operator*=(T scalar)
+		Quaternion& operator*=(T scalar) noexcept
 		{
 			x *= scalar;
 			y *= scalar;
@@ -618,7 +664,7 @@ namespace ObsidianEngine::detail
 			return *this;
 		}
 
-		Quaternion& operator+=(const Quaternion& other)
+		Quaternion& operator+=(const Quaternion& other) noexcept
 		{
 			x += other.x;
 			y += other.y;
@@ -627,7 +673,7 @@ namespace ObsidianEngine::detail
 			return *this;
 		}
 
-		Quaternion& operator-=(const Quaternion& rhs)
+		Quaternion& operator-=(const Quaternion& rhs) noexcept
 		{
 			x -= rhs.x;
 			y -= rhs.y;
@@ -636,72 +682,56 @@ namespace ObsidianEngine::detail
 			return *this;
 		}
 
-		Vector<T, 3> operator*(const Vector<T, 3>& vec) const
+		T operator[](size_t i) const noexcept
 		{
-			return rotate(vec);
-		}
-
-		T operator[](int i) const
-		{
+			assert(i < 4 && "Can't index more than four elements (x, y, z, w)!");
 			return data[i];
 		}
 
-		T& operator[](int i)
+		T& operator[](size_t i) noexcept
 		{
+			assert(i < 4 && "Can't index more than four elements (x, y, z, w)!");
 			return data[i];
 		}
 
-		bool operator==(const Quaternion& o) const
+		static bool isEqual(const Quaternion& lhs,  const Quaternion& rhs, T epsilon = Math<T>::Epsilon) noexcept
 		{
-			return x == o.x && y == o.y && z == o.z && w == o.w;
+			for (size_t i = 0; i < 4; i++)
+			{
+				if (!Math<T>::isEqual(lhs[i], rhs[i], epsilon)) return false;
+			}
+
+			return true;
 		}
 
-		bool operator!=(const Quaternion& o) const
+		bool equals(const Quaternion& rhs, T epsilon = Math<T>::Epsilon) const noexcept
 		{
-			return !(*this == o);
+			return isEqual(*this, rhs, epsilon);
+		}
+
+		bool operator==(const Quaternion& rhs) const noexcept
+		{
+			return equals(rhs);
+		}
+
+		bool operator!=(const Quaternion& rhs) const noexcept
+		{
+			return !equals(rhs);
+		}
+
+		std::string toString() const
+		{
+			std::stringstream ss;
+			ss << "(" << x << ", " << y << ", " << z << ", " << w << ")";
+			return ss.str();
 		}
 
 		friend std::ostream& operator<<(std::ostream& os, const detail::Quaternion<T>& q)
 		{
-			os << "(" << q.x << ", " << q.y << ", " << q.z << ", " << q.w << ")";
+			os << q.toString();
 			return os;
 		}
 	};
-
-	template<typename T1, typename T2>
-	inline auto operator+(const Quaternion<T1>& lhs, const Quaternion<T2>& rhs) -> Quaternion<std::common_type_t<T1, T2>>
-	{
-		using ResultT = std::common_type_t<T1, T2>;
-
-		return Quaternion<ResultT>(lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z, lhs.w + rhs.w);
-	}
-
-	template<typename T1, typename T2>
-	inline auto operator-(const Quaternion<T1>& lhs, const Quaternion<T2>& rhs) -> Quaternion<std::common_type_t<T1, T2>>
-	{
-		using ResultT = std::common_type_t<T1, T2>;
-
-		return Quaternion<ResultT>(lhs.x - rhs.x, lhs.y - rhs.y, lhs.z - rhs.z, lhs.w - rhs.w);
-	}
-
-	template<typename T1, typename T2>
-	inline auto operator*(const Quaternion<T1>& lhs, const Quaternion<T2>& rhs) -> Quaternion<std::common_type_t<T1, T2>>
-	{
-		using ResultT = std::common_type_t<T1, T2>;
-
-		return Quaternion<ResultT>(
-			lhs.w * rhs.x + lhs.x * rhs.w + lhs.y * rhs.z - lhs.z * rhs.y,
-			lhs.w * rhs.y + lhs.y * rhs.w + lhs.z * rhs.x - lhs.x * rhs.z,
-			lhs.w * rhs.z + lhs.z * rhs.w + lhs.x * rhs.y - lhs.y * rhs.x,
-			lhs.w * rhs.w - lhs.x * rhs.x - lhs.y * rhs.y - lhs.z * rhs.z
-		);
-	}
-
-	template<typename T1, typename T2>
-	inline auto operator*(const Quaternion<T1>& q, const Vector<T2, 3>& v) -> Vector<std::common_type_t<T1, T2>, 3>
-	{
-		return q.rotate(Vector<std::common_type_t<T1, T2>, 3>(v));
-	}
 }
 
 #endif

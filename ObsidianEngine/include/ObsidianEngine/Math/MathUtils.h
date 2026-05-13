@@ -48,6 +48,16 @@ namespace ObsidianEngine
 				return static_cast<T>(value);
 			}
 
+			static bool isEqual(T a, T b, T epsilon = Math::Epsilon)
+			{
+				if constexpr (std::is_floating_point_v<T>)
+				{
+					return abs(a - b) < epsilon;
+				}
+
+				return a == b;
+			}
+
 			static T sin(T val) 
 			{
 				return std::sin(val);

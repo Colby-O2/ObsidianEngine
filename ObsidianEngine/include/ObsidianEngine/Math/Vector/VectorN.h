@@ -12,33 +12,13 @@ namespace ObsidianEngine::detail
 	{
 		T data[N];
 
-		constexpr Vector() : data{}
-		{
-			for (size_t i = 0; i < N; i++)
-			{
-				data[i] = 0;
-			}
-		}
+		constexpr Vector() noexcept : data{} {}
 
-		constexpr Vector(const Vector& v) : data{}
-		{
-			for (size_t i = 0; i < N; i++)
-			{
-				data[i] = v[i];
-			}
-		}
-
-		template<typename U>
-		constexpr Vector(const Vector<U, N>& v) : data{}
-		{
-			for (size_t i = 0; i < N; i++)
-			{
-				data[i] = static_cast<T>(v[i]);
-			}
-		}
+		constexpr Vector(const Vector&) noexcept = default;
 
 		template<typename U, size_t M>
-		constexpr Vector(const Vector<U, M>& other) : data{}
+		requires (!std::is_same_v<U, T> || M != N)
+		constexpr explicit Vector(const Vector<U, M>& other) noexcept : data{}
 		{
 			constexpr size_t copyCount = (N < M) ? N : M;
 
@@ -54,12 +34,10 @@ namespace ObsidianEngine::detail
 		}
 
 		template<typename... Args>
-		constexpr Vector(Args... args) : data{ static_cast<T>(args)... }
-		{
-			static_assert(sizeof...(Args) == N, "Number of arguments must match Vector size!");
-		}
+		requires (sizeof...(Args) == N) && (std::is_convertible_v<Args, T> && ...)
+		constexpr Vector(Args... args) noexcept : data{ static_cast<T>(args)... } {}
 
-		constexpr Vector(const T(&arr)[N])
+		constexpr Vector(const T(&arr)[N]) noexcept
 		{
 			for (size_t i = 0; i < N; i++)
 			{
@@ -67,7 +45,7 @@ namespace ObsidianEngine::detail
 			}
 		}
 
-		constexpr Vector(std::initializer_list<T> init)
+		constexpr Vector(std::initializer_list<T> init) noexcept
 		{
 			size_t i = 0;
 			for (T v : init)
@@ -83,6 +61,8 @@ namespace ObsidianEngine::detail
 				data[i] = T{};
 			}
 		}
+
+		constexpr Vector& operator=(const Vector& other) noexcept = default;
 	};
 
 	template<typename T>
@@ -95,60 +75,21 @@ namespace ObsidianEngine::detail
 			T data[1];
 		};
 
-		constexpr Vector() : data{ 0 } {}
+		constexpr Vector() noexcept : data{} {}
 
-		constexpr Vector(const Vector& v) : data{ v[0] } {}
+		constexpr Vector(const Vector&) noexcept = default;
 
-		constexpr Vector(T x_) : data{ x_ } {}
-
-		template<typename U>
-		constexpr Vector(const Vector<U, 1>& other) : data{ static_cast<T>(other[0]) } {}
+		constexpr Vector(T x_) noexcept : data{ x_ } {}
 
 		template<typename U, size_t M>
-		constexpr Vector(const Vector<U, M>& other) : data{ }
+		requires (!std::is_same_v<U, T> || M != 1)
+		constexpr explicit Vector(const Vector<U, M>& other) noexcept : data{ }
 		{
 			if constexpr (M >= 1) data[0] = static_cast<T>(other[0]);
-			if constexpr (M >= 2) data[1] = static_cast<T>(other[1]);
-			if constexpr (M >= 3) data[2] = static_cast<T>(other[2]);
-			if constexpr (M >= 4) data[3] = static_cast<T>(other[3]);
 		}
+
+		constexpr Vector& operator=(const Vector& other) noexcept = default;
 	};
-
-	template<typename T1, typename T2, size_t N>
-	inline auto operator*(const Vector<T1, N>& lhs, const Vector<T2, N>& rhs) -> Vector<std::common_type_t<T1, T2>, N>
-	{
-		using ResultT = std::common_type_t<T1, T2>;
-		Vector<ResultT, N> result;
-		for (size_t i = 0; i < N; ++i) 
-		{
-			result[i] = static_cast<ResultT>(lhs[i]) * static_cast<ResultT>(rhs[i]);
-		}
-		return result;
-	}
-
-	template<typename T1, typename T2, size_t N>
-	inline auto operator+(const Vector<T1, N>& lhs, const Vector<T2, N>& rhs) -> Vector<std::common_type_t<T1, T2>, N>
-	{
-		using ResultT = std::common_type_t<T1, T2>;
-		Vector<ResultT, N> result;
-		for (size_t i = 0; i < N; ++i) 
-		{
-			result[i] = static_cast<ResultT>(lhs[i]) + static_cast<ResultT>(rhs[i]);
-		}
-		return result;
-	}
-
-	template<typename T1, typename T2, size_t N>
-	inline auto operator-(const Vector<T1, N>& lhs, const Vector<T2, N>& rhs) -> Vector<std::common_type_t<T1, T2>, N>
-	{
-		using ResultT = std::common_type_t<T1, T2>;
-		Vector<ResultT, N> result;
-		for (size_t i = 0; i < N; ++i) 
-		{
-			result[i] = static_cast<ResultT>(lhs[i]) - static_cast<ResultT>(rhs[i]);
-		}
-		return result;
-	}
 }
 
 #endif

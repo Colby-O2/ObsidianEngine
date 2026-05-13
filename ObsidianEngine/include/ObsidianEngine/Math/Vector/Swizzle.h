@@ -8,7 +8,7 @@ namespace ObsidianEngine::detail
 	template<typename T, size_t N>
 	struct Vector;
 
-	constexpr size_t swizzleIndex(char c)
+	constexpr size_t swizzleIndex(char c) noexcept
 	{
 		switch (c)
 		{
@@ -36,7 +36,7 @@ namespace ObsidianEngine::detail
 	};
 
 	template<StringLiteral Str>
-	constexpr auto parseSwizzle()
+	constexpr auto parseSwizzle() noexcept
 	{
 		constexpr size_t Count = sizeof(Str.value) - 1;
 
@@ -55,40 +55,38 @@ namespace ObsidianEngine::detail
 
 		T* data;
 
-		operator Vector<T, Size>() const
+		operator Vector<T, Size>() const noexcept
 		{
 			return eval();
 		}
 
-		Vector<T, Size> eval() const
+		Vector<T, Size> eval() const noexcept
 		{
 			return Vector<T, Size>{ data[Indices]... };
 		}
 
 		template<typename U>
-		operator Vector<U, Size>() const
+		requires std::is_arithmetic_v<U>
+		auto cast() const noexcept
 		{
-			return Vector<U, Size>(eval());
+			return eval().cast<U>();
 		}
 
-		template<typename U, size_t N>
-		operator Vector<U, N>() const
+		template<size_t M>
+		auto cast() const noexcept
 		{
-			Vector<U, N> result{};
+			return eval().cast<M>();
+		}
 
-			constexpr size_t M = Size;
-			constexpr size_t copyCount = (N < M) ? N : M;
-
-			for (size_t i = 0; i < copyCount; i++)
-			{
-				result[i] = static_cast<U>((*this)[i]);
-			}
-
-			return result;
+		template<typename U, size_t M>
+		requires std::is_arithmetic_v<U>
+		auto cast() const noexcept
+		{
+			return eval().cast<U, M>();
 		}
 
 		template<StringLiteral Str>
-		constexpr auto swizzle() const
+		constexpr auto swizzle() const noexcept
 		{
 			constexpr size_t len = sizeof(Str.value) - 1;
 
@@ -102,7 +100,7 @@ namespace ObsidianEngine::detail
 			return swizzleToPack<Str>(std::make_index_sequence<len>{});
 		}
 
-		SwizzleProxy& operator=(const Vector<T, Size>& rhs)
+		SwizzleProxy& operator=(const Vector<T, Size>& rhs) noexcept
 		{
 			static_assert(!HasDuplicates<Indices...>::value, "Cannot assign to swizzle with duplicate components!");
 
@@ -112,149 +110,93 @@ namespace ObsidianEngine::detail
 			return *this;
 		}
 
-		T& operator[](size_t i)
+		T& operator[](size_t i) noexcept
 		{
 			assert(i < Size && "Vector index out of range!");
 			constexpr size_t lookup[] = { Indices... };
 			return data[lookup[i]];
 		}
 
-		const T& operator[](size_t i) const
+		const T& operator[](size_t i) const noexcept
 		{
 			assert(i < Size && "Vector index out of range!");
 			constexpr size_t lookup[] = { Indices... };
 			return data[lookup[i]];
 		}
 
-		friend Vector<T, Size> operator+(const SwizzleProxy& lhs, const Vector<T, Size>& rhs)
+		friend Vector<T, Size> operator+(const SwizzleProxy& lhs, const Vector<T, Size>& rhs) noexcept
 		{
 			return lhs.eval() + rhs;
 		}
 
-		friend Vector<T, Size> operator-(const SwizzleProxy& lhs, const Vector<T, Size>& rhs)
+		friend Vector<T, Size> operator-(const SwizzleProxy& lhs, const Vector<T, Size>& rhs) noexcept
 		{
 			return lhs.eval() - rhs;
 		}
 
-		friend Vector<T, Size> operator*(const SwizzleProxy& lhs, const Vector<T, Size>& rhs)
+		friend Vector<T, Size> operator*(const SwizzleProxy& lhs, const Vector<T, Size>& rhs) noexcept
 		{
 			return lhs.eval() * rhs;
 		}
 
-		friend Vector<T, Size> operator+(const Vector<T, Size>& lhs, const SwizzleProxy& rhs)
+		friend Vector<T, Size> operator+(const Vector<T, Size>& lhs, const SwizzleProxy& rhs) noexcept
 		{
 			return lhs + rhs.eval();
 		}
 
-		friend Vector<T, Size> operator-(const Vector<T, Size>& lhs, const SwizzleProxy& rhs)
+		friend Vector<T, Size> operator-(const Vector<T, Size>& lhs, const SwizzleProxy& rhs) noexcept
 		{
 			return lhs - rhs.eval();
 		}
 
-		friend Vector<T, Size> operator*(const Vector<T, Size>& lhs, const SwizzleProxy& rhs)
+		friend Vector<T, Size> operator*(const Vector<T, Size>& lhs, const SwizzleProxy& rhs) noexcept
 		{
 			return lhs * rhs.eval();
 		}
 
 		template<size_t... OtherIndices>
-		friend Vector<T, Size> operator+(const SwizzleProxy& lhs, const SwizzleProxy<T, OtherIndices...>& rhs)
+		friend Vector<T, Size> operator+(const SwizzleProxy& lhs, const SwizzleProxy<T, OtherIndices...>& rhs) noexcept
 		{
 			return lhs.eval() + rhs.eval();
 		}
 
 		template<size_t... OtherIndices>
-		friend Vector<T, Size> operator-(const SwizzleProxy& lhs, const SwizzleProxy<T, OtherIndices...>& rhs)
+		friend Vector<T, Size> operator-(const SwizzleProxy& lhs, const SwizzleProxy<T, OtherIndices...>& rhs) noexcept
 		{
 			return lhs.eval() - rhs.eval();
 		}
 
 		template<size_t... OtherIndices>
-		friend Vector<T, Size> operator*(const SwizzleProxy& lhs, const SwizzleProxy<T, OtherIndices...>& rhs)
+		friend Vector<T, Size> operator*(const SwizzleProxy& lhs, const SwizzleProxy<T, OtherIndices...>& rhs) noexcept
 		{
 			return lhs.eval() * rhs.eval();
 		}
 
-		friend Vector<T, Size> operator-(const SwizzleProxy& lhs)
+		friend Vector<T, Size> operator-(const SwizzleProxy& lhs) noexcept
 		{
 			return -lhs.eval();
 		
 		}
 
-		friend std::ostream& operator<<(std::ostream& os, const SwizzleProxy& v)
+		friend std::ostream& operator<<(std::ostream& os, const SwizzleProxy& v) noexcept
 		{
 			os << v.eval();
 			return os;
 		}
 	private:
 		template<size_t... LocalIndices>
-		constexpr auto makeSwizzle() const
+		constexpr auto makeSwizzle() const noexcept
 		{
 			constexpr size_t current[] = { Indices... };
 			return SwizzleProxy<T, current[LocalIndices]...>{ data };
 		}
 
 		template<StringLiteral Str, size_t... I>
-		constexpr auto swizzleToPack(std::index_sequence<I...>) const
+		constexpr auto swizzleToPack(std::index_sequence<I...>) const noexcept
 		{
 			return makeSwizzle<swizzleIndex(Str.value[I])...>();
 		}
 	};
-
-	template<typename T, size_t... Indices, typename U>
-	inline auto operator*(const SwizzleProxy<T, Indices...>& lhs, const Vector<U, sizeof...(Indices)>& rhs) -> Vector<std::common_type_t<T, U>, sizeof...(Indices)>
-	{
-		return lhs.eval() * rhs;
-	}
-
-	template<typename T, size_t... Indices, typename U>
-	inline auto operator*(const Vector<U, sizeof...(Indices)>& lhs, const SwizzleProxy<T, Indices...>& rhs) -> Vector<std::common_type_t<T, U>, sizeof...(Indices)>
-	{
-		return lhs * rhs.eval();
-	}
-
-	template<typename T, size_t... Indices, typename U, size_t... OtherIndices>
-	inline auto operator*(const SwizzleProxy<T, Indices...>& lhs, const SwizzleProxy<U, OtherIndices...>& rhs) -> Vector<std::common_type_t<T, U>, sizeof...(Indices)>
-	{
-		static_assert(sizeof...(Indices) == sizeof...(OtherIndices), "Swizzles must be the same size!");
-		return lhs.eval() * rhs.eval();
-	}
-
-	template<typename T, size_t... Indices, typename U>
-	inline auto operator+(const SwizzleProxy<T, Indices...>& lhs, const Vector<U, sizeof...(Indices)>& rhs) -> Vector<std::common_type_t<T, U>, sizeof...(Indices)>
-	{
-		return lhs.eval() + rhs;
-	}
-
-	template<typename T, size_t... Indices, typename U>
-	inline auto operator+(const Vector<U, sizeof...(Indices)>& lhs, const SwizzleProxy<T, Indices...>& rhs) -> Vector<std::common_type_t<T, U>, sizeof...(Indices)>
-	{
-		return lhs + rhs.eval();
-	}
-
-	template<typename T, size_t... Indices, typename U, size_t... OtherIndices>
-	inline auto operator+(const SwizzleProxy<T, Indices...>& lhs, const SwizzleProxy<U, OtherIndices...>& rhs) -> Vector<std::common_type_t<T, U>, sizeof...(Indices)>
-	{
-		static_assert(sizeof...(Indices) == sizeof...(OtherIndices), "Swizzles must be the same size!");
-		return lhs.eval() + rhs.eval();
-	}
-	template<typename T, size_t... Indices, typename U>
-	inline auto operator-(const SwizzleProxy<T, Indices...>& lhs, const Vector<U, sizeof...(Indices)>& rhs) -> Vector<std::common_type_t<T, U>, sizeof...(Indices)>
-	{
-		return lhs.eval() - rhs;
-	}
-
-	template<typename T, size_t... Indices, typename U>
-	inline auto operator-(const Vector<U, sizeof...(Indices)>& lhs, const SwizzleProxy<T, Indices...>& rhs) -> Vector<std::common_type_t<T, U>, sizeof...(Indices)>
-	{
-		return lhs - rhs.eval();
-	}
-
-	template<typename T, size_t... Indices, typename U, size_t... OtherIndices>
-	inline auto operator-(const SwizzleProxy<T, Indices...>& lhs, const SwizzleProxy<U, OtherIndices...>& rhs) -> Vector<std::common_type_t<T, U>, sizeof...(Indices)>
-	{
-		static_assert(sizeof...(Indices) == sizeof...(OtherIndices), "Swizzles must be the same size!");
-		return lhs.eval() - rhs.eval();
-	}
 }
 
 #endif

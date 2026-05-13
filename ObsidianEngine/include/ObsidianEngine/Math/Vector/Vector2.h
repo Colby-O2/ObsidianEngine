@@ -16,28 +16,26 @@ namespace ObsidianEngine::detail
 			T data[2];
 		};
 
-		constexpr Vector() : data{ 0,0 } {}
+		constexpr Vector() noexcept : data{} {}
 
-		constexpr Vector(const Vector& v) : data{ v[0], v[1] } {}
+		constexpr Vector(const Vector&) noexcept = default;
 
-		constexpr Vector(T x_, T y_) : data{ x_, y_ } {}
-
-		template<typename U>
-		constexpr Vector(const Vector<U, 2>& other) : data{ static_cast<T>(other[0]), static_cast<T>(other[1]) } {}
+		constexpr Vector(T x_, T y_) noexcept : data{ x_, y_ } {}
 
 		template<typename U, size_t M>
-		constexpr Vector(const Vector<U, M>& other) : data{}
+		requires (!std::is_same_v<U, T> || M != 2)
+		constexpr explicit Vector(const Vector<U, M>& other) noexcept : data{}
 		{
 			if constexpr (M >= 1) data[0] = static_cast<T>(other[0]);
 			if constexpr (M >= 2) data[1] = static_cast<T>(other[1]);
-			if constexpr (M >= 3) data[2] = static_cast<T>(other[2]);
-			if constexpr (M >= 4) data[3] = static_cast<T>(other[3]);
 		}
 
-		static constexpr Vector up() { return { Math<T>::val(0), Math<T>::val(1) }; }
-		static constexpr Vector down() { return { Math<T>::val(0), Math<T>::val(-1) }; }
-		static constexpr Vector left() { return { Math<T>::val(-1), Math<T>::val(0) }; }
-		static constexpr Vector right() { return { Math<T>::val(1), Math<T>::val(0) }; }
+		static constexpr Vector up() noexcept { return { Math<T>::val(0), Math<T>::val(1) }; }
+		static constexpr Vector down() noexcept { return { Math<T>::val(0), Math<T>::val(-1) }; }
+		static constexpr Vector left() noexcept { return { Math<T>::val(-1), Math<T>::val(0) }; }
+		static constexpr Vector right() noexcept { return { Math<T>::val(1), Math<T>::val(0) }; }
+
+		constexpr Vector& operator=(const Vector& other) noexcept = default;
 	};
 }
 
