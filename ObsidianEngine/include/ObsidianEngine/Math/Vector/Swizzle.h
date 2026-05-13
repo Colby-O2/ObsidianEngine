@@ -73,14 +73,14 @@ namespace ObsidianEngine::detail
 		}
 
 		template<size_t M>
-		auto cast() const noexcept
+		auto resize() const noexcept
 		{
 			return eval().cast<M>();
 		}
 
 		template<typename U, size_t M>
 		requires std::is_arithmetic_v<U>
-		auto cast() const noexcept
+		auto resizeAs() const noexcept
 		{
 			return eval().cast<U, M>();
 		}

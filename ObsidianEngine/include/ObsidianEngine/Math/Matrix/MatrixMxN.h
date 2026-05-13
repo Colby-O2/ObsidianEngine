@@ -55,10 +55,7 @@ namespace ObsidianEngine::detail
 
 		template<typename... Args>
 		requires (sizeof...(Args) == Rows * Cols) && (std::is_convertible_v<Args, T> && ...)
-		constexpr Matrix(Args... args) noexcept : data{ static_cast<T>(args)... }
-		{
-			static_assert(sizeof...(Args) == Rows * Cols, "Matrix constructor must receive exactly Rows * Cols arguments!");
-		}
+		constexpr Matrix(Args... args) noexcept : data{ static_cast<T>(args)... } {}
 
 		template<typename U>
 		requires std::is_arithmetic_v<U>
