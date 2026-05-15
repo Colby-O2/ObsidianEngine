@@ -10,7 +10,7 @@ namespace ObsidianEngine
 	using Matrix4x4Float = detail::Matrix4x4<float>;
 	using Matrix4x4Double = detail::Matrix4x4<double>;
 	using Matrix4x4Int = detail::Matrix<4, 4, int>;
-	using Matirx4x4 = Matrix4x4Float;
+	using Matrix4x4 = Matrix4x4Float;
 
 	// Square Matrices
 	using Matrix2x2Float = detail::Matrix<2, 2, float>;

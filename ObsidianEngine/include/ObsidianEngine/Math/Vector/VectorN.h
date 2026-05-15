@@ -10,7 +10,7 @@ namespace ObsidianEngine::detail
 	template<typename T, size_t N>
 	struct Vector : VectorBase<Vector<T, N>, T, N>
 	{
-		T data[N];
+		std::array<T, N> data;
 
 		constexpr Vector() noexcept : data{} {}
 
@@ -72,7 +72,7 @@ namespace ObsidianEngine::detail
 		{
 			struct { T x; };
 			struct { T r; };
-			T data[1];
+			std::array<T, 1> data;;
 		};
 
 		constexpr Vector() noexcept : data{} {}

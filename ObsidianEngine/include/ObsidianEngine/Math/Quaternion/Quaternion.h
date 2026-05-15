@@ -37,7 +37,7 @@ namespace ObsidianEngine::detail
 				T x, y, z, w;
 			};
 
-			T data[4];
+			std::array<T, 4> data;
 		};
 
 		constexpr Quaternion() noexcept : x(Math<T>::val(Math<T>::val(0))), y(Math<T>::val(0)), z(Math<T>::val(0)), w(Math<T>::val(Math<T>::val(1))) {}
@@ -559,7 +559,7 @@ namespace ObsidianEngine::detail
 		{
 			T dot = Quaternion::dot(a, b);
 			T t1 = Math<T>::val(1) - t;
-			Quaternion res = (dot < 0) ? (a * t1) - (b * t) : (a * t1) + (b * t);
+			Quaternion res = (dot < 0) ? a.mulScalar(t1) - b.mulScalar(t) : a.mulScalar(t1) + b.mulScalar(t);
 			return res.normalized();
 		}
 
@@ -593,7 +593,7 @@ namespace ObsidianEngine::detail
 			T s0 = Math<T>::cos(theta) - dot * sin_theta / sin_theta_0;
 			T s1 = sin_theta / sin_theta_0;
 
-			return ((a * s0) + (end * s1)).normalized();
+			return (a.mulScalar(s0) + end.mulScalar(s1)).normalized();
 		}
 
 		static Quaternion slerp(const Quaternion& a, const Quaternion& b, T t) noexcept
@@ -601,51 +601,57 @@ namespace ObsidianEngine::detail
 			return slerpUnclamped(a, b, Math<T>::clamp(t, 0, 1));
 		}
 
-		Quaternion operator*(const Quaternion& other) const noexcept
+		Quaternion& mulScalarAssign(T scalar) noexcept
 		{
-			Quaternion res = *this;
-			res *= other;
-			return res;
+			x *= scalar;
+			y *= scalar;
+			z *= scalar;
+			w *= scalar;
+			return *this;
 		}
 
-		Quaternion operator*(T scalar) const noexcept
+		Quaternion mulScalar(T scalar) const noexcept
 		{
-			Quaternion res = *this;
-			res *= scalar;
-			return res;
+			Quaternion result = *this;
+			return result.mulScalarAssign(scalar);
 		}
 
-		friend Quaternion operator*(T scalar, const Quaternion& q) noexcept
+		Quaternion& divScalarAssign(T scalar) noexcept
 		{
-			return q * scalar;
+			if constexpr (std::is_floating_point_v<T>)
+			{
+				assert(Math<T>::abs(scalar) > Math<T>::Epsilon && "Division by zero!");
+				T invScalar = static_cast<T>(1) / scalar;
+				x *= invScalar;
+				y *= invScalar;
+				z *= invScalar;
+				w *= invScalar;
+			}
+			else
+			{
+				assert(scalar != static_cast<T>(0) && "Division by zero!");
+
+				x /= scalar;
+				y /= scalar;
+				z /= scalar;
+				w /= scalar;
+			}
+
+			return *this;
 		}
 
-		Vector<T, 3> operator*(const Vector<T, 3>& vec) const noexcept
+		Quaternion divScalar(T scalar) const noexcept
 		{
-			return rotate(vec);
+			Quaternion result = *this;
+			return result.divScalarAssign(scalar);
 		}
 
-		Quaternion operator+(const Quaternion& rhs) const noexcept
+		Quaternion& mulAssign(const Quaternion& rhs) noexcept
 		{
-			return Quaternion(x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w);
-		}
-
-		Quaternion operator-(const Quaternion& rhs) const noexcept
-		{
-			return Quaternion(x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w);
-		}
-
-		Quaternion operator-() const noexcept
-		{
-			return Quaternion(-x, -y, -z, -w);
-		}
-
-		Quaternion& operator*=(const Quaternion& other) noexcept
-		{
-			T tx = w * other.x + x * other.w + y * other.z - z * other.y;
-			T ty = w * other.y + y * other.w + z * other.x - x * other.z;
-			T tz = w * other.z + z * other.w + x * other.y - y * other.x;
-			T tw = w * other.w - x * other.x - y * other.y - z * other.z;
+			T tx = w * rhs.x + x * rhs.w + y * rhs.z - z * rhs.y;
+			T ty = w * rhs.y + y * rhs.w + z * rhs.x - x * rhs.z;
+			T tz = w * rhs.z + z * rhs.w + x * rhs.y - y * rhs.x;
+			T tw = w * rhs.w - x * rhs.x - y * rhs.y - z * rhs.z;
 
 			x = tx;
 			y = ty;
@@ -655,31 +661,109 @@ namespace ObsidianEngine::detail
 			return *this;
 		}
 
-		Quaternion& operator*=(T scalar) noexcept
+		Quaternion mul(const Quaternion& rhs) const noexcept
 		{
-			x *= scalar;
-			y *= scalar;
-			z *= scalar;
-			w *= scalar;
+			Quaternion result = *this;
+			return result.mulAssign(rhs);
+		}
+
+		Quaternion operator*(const Quaternion& rhs) const noexcept
+		{
+			return mul(rhs);
+		}
+
+		Quaternion& operator*=(const Quaternion& rhs) noexcept
+		{
+			return mulAssign(rhs);
+		}
+
+		Vector<T, 3> operator*(const Vector<T, 3>& vec) const noexcept
+		{
+			return rotate(vec);
+		}
+
+		Quaternion& addScalarAssign(T scalar) noexcept
+		{
+			w += scalar;
 			return *this;
 		}
 
-		Quaternion& operator+=(const Quaternion& other) noexcept
+		Quaternion addScalar(T scalar) const noexcept
 		{
-			x += other.x;
-			y += other.y;
-			z += other.z;
-			w += other.w;
+			Quaternion result = *this;
+			return result.addAssign(scalar);
+		}
+
+		Quaternion& addAssign(const Quaternion& rhs) noexcept
+		{
+			x += rhs.x;
+			y += rhs.y;
+			z += rhs.z;
+			w += rhs.w;
 			return *this;
 		}
 
-		Quaternion& operator-=(const Quaternion& rhs) noexcept
+		Quaternion add(const Quaternion& rhs) const noexcept
+		{
+			Quaternion result = *this;
+			return result.addAssign(rhs);
+		}
+
+		Quaternion operator+(const Quaternion& rhs) const noexcept
+		{
+			return add(rhs);
+		}
+
+		Quaternion& operator+=(const Quaternion& rhs) noexcept
+		{
+			return addAssign(rhs);
+		}
+
+		Quaternion& subScalarAssign(T scalar) noexcept
+		{
+			w -= scalar;
+			return *this;
+		}
+
+		Quaternion subScalar(T scalar) const noexcept
+		{
+			Quaternion result = *this;
+			return result.subAssign(scalar);
+		}
+
+		Quaternion& subAssign(const Quaternion& rhs) noexcept
 		{
 			x -= rhs.x;
 			y -= rhs.y;
 			z -= rhs.z;
 			w -= rhs.w;
 			return *this;
+		}
+
+		Quaternion sub(const Quaternion& rhs) const noexcept
+		{
+			Quaternion result = *this;
+			return result.subAssign(rhs);
+		}
+
+		Quaternion operator-(const Quaternion& rhs) const noexcept
+		{
+			return sub(rhs);
+		}
+
+		Quaternion& operator-=(const Quaternion& rhs) noexcept
+		{
+			return subAssign(rhs);
+		}
+
+		Quaternion negate() const noexcept
+		{
+			return Quaternion(-x, -y, -z, -w);
+		}
+
+		Quaternion operator-() const noexcept
+		{
+			return negate();
 		}
 
 		T operator[](size_t i) const noexcept
@@ -719,9 +803,10 @@ namespace ObsidianEngine::detail
 			return !equals(rhs);
 		}
 
-		std::string toString() const
+		std::string toString(int precision = 2) const
 		{
 			std::stringstream ss;
+			ss << std::fixed << std::setprecision(precision);
 			ss << "(" << x << ", " << y << ", " << z << ", " << w << ")";
 			return ss.str();
 		}

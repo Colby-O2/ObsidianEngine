@@ -124,58 +124,35 @@ namespace ObsidianEngine::detail
 			return data[lookup[i]];
 		}
 
-		friend Vector<T, Size> operator+(const SwizzleProxy& lhs, const Vector<T, Size>& rhs) noexcept
+		Vector<T, Size> operator+(const Vector<T, Size>& rhs) noexcept
 		{
-			return lhs.eval() + rhs;
+			return eval() + rhs;
 		}
 
-		friend Vector<T, Size> operator-(const SwizzleProxy& lhs, const Vector<T, Size>& rhs) noexcept
+		Vector<T, Size> operator-(const Vector<T, Size>& rhs) noexcept
 		{
-			return lhs.eval() - rhs;
+			return eval() - rhs;
 		}
 
-		friend Vector<T, Size> operator*(const SwizzleProxy& lhs, const Vector<T, Size>& rhs) noexcept
+		Vector<T, Size> operator*(const Vector<T, Size>& rhs) noexcept
 		{
-			return lhs.eval() * rhs;
+			return eval() * rhs;
 		}
 
-		friend Vector<T, Size> operator+(const Vector<T, Size>& lhs, const SwizzleProxy& rhs) noexcept
+		Vector<T, Size> operator-() noexcept
 		{
-			return lhs + rhs.eval();
+			return -eval();
+
 		}
 
-		friend Vector<T, Size> operator-(const Vector<T, Size>& lhs, const SwizzleProxy& rhs) noexcept
+		bool operator==(const Vector<T, Size>& rhs) noexcept
 		{
-			return lhs - rhs.eval();
+			return eval().equals(rhs);
 		}
 
-		friend Vector<T, Size> operator*(const Vector<T, Size>& lhs, const SwizzleProxy& rhs) noexcept
+		bool operator!=(const Vector<T, Size>& rhs) noexcept
 		{
-			return lhs * rhs.eval();
-		}
-
-		template<size_t... OtherIndices>
-		friend Vector<T, Size> operator+(const SwizzleProxy& lhs, const SwizzleProxy<T, OtherIndices...>& rhs) noexcept
-		{
-			return lhs.eval() + rhs.eval();
-		}
-
-		template<size_t... OtherIndices>
-		friend Vector<T, Size> operator-(const SwizzleProxy& lhs, const SwizzleProxy<T, OtherIndices...>& rhs) noexcept
-		{
-			return lhs.eval() - rhs.eval();
-		}
-
-		template<size_t... OtherIndices>
-		friend Vector<T, Size> operator*(const SwizzleProxy& lhs, const SwizzleProxy<T, OtherIndices...>& rhs) noexcept
-		{
-			return lhs.eval() * rhs.eval();
-		}
-
-		friend Vector<T, Size> operator-(const SwizzleProxy& lhs) noexcept
-		{
-			return -lhs.eval();
-		
+			return !(eval().equals(rhs));
 		}
 
 		friend std::ostream& operator<<(std::ostream& os, const SwizzleProxy& v) noexcept

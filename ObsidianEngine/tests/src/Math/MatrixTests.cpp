@@ -535,20 +535,20 @@ void test_matrix_inverse()
 
             if constexpr (R == 2)
             {
-                CHECK_CLOSE(m.minor_value(0, 0), T(4));
+                CHECK_CLOSE(m.minorValue(0, 0), T(4));
                 CHECK_CLOSE(m.cofactor(0, 1), T(-2));
             }
             else if constexpr (R == 3)
             {
-                CHECK_CLOSE(m.minor_value(0, 0), T(-3));
+                CHECK_CLOSE(m.minorValue(0, 0), T(-3));
                 CHECK_CLOSE(m.cofactor(0, 1), T(6));
             }
             else
             {
                 Mat id = Mat::identity();
 
-                CHECK_CLOSE(id.minor_value(0, 0), T(1));
-                CHECK_CLOSE(id.minor_value(0, 1), T(0));
+                CHECK_CLOSE(id.minorValue(0, 0), T(1));
+                CHECK_CLOSE(id.minorValue(0, 1), T(0));
             }
         }
     }

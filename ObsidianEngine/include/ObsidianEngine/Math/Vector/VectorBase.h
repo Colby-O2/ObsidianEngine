@@ -5,10 +5,12 @@
 #include <cassert>
 #include <cstddef>
 #include <iostream>
+#include <iomanip>
 #include <type_traits>
 #include <utility>
 #include <string>
 #include <sstream>
+
 
 #include "ObsidianEngine/Math/MathUtils.h"
 #include "ObsidianEngine/Math/Vector/Swizzle.h"
@@ -189,6 +191,11 @@ namespace ObsidianEngine::detail
 			return mul(scalar);
 		}
 
+		friend auto operator*(T scalar, const Derived& v) noexcept
+		{
+			return v.mul(scalar);
+		}
+
 		Derived& operator*=(T scalar)
 		{
 			return mulAssign(scalar);
@@ -244,7 +251,7 @@ namespace ObsidianEngine::detail
 			return addAssign(rhs);
 		}
 
-		Derived& subtractAssign(const Derived& rhs) noexcept
+		Derived& subAssign(const Derived& rhs) noexcept
 		{
 			for (size_t i = 0; i < N; i++)
 			{
@@ -253,20 +260,20 @@ namespace ObsidianEngine::detail
 			return self();
 		}
 
-		Derived subtract(const Derived& rhs) const noexcept
+		Derived sub(const Derived& rhs) const noexcept
 		{
 			Derived result = self();
-			return result.subtractAssign(rhs);
+			return result.subAssign(rhs);
 		}
 
 		Derived operator-(const Derived& rhs) const noexcept
 		{
-			return subtract(rhs);
+			return sub(rhs);
 		}
 
 		Derived& operator-=(const Derived& rhs) noexcept
 		{
-			return subtractAssign(rhs);
+			return subAssign(rhs);
 		}
 
 		Derived negate() const noexcept requires std::is_signed_v<T>
@@ -284,11 +291,12 @@ namespace ObsidianEngine::detail
 			return negate();
 		}
 
-		Derived& divideAssign(T scalar) noexcept
+		Derived& divAssign(T scalar) noexcept
 		{
 			if constexpr (std::is_floating_point_v<T>)
 			{
 				assert(Math<T>::abs(scalar) > Math<T>::Epsilon && "Division by zero!");
+
 				T invScalar = static_cast<T>(1) / scalar;
 				for (size_t i = 0; i < N; i++) 
 				{
@@ -304,35 +312,31 @@ namespace ObsidianEngine::detail
 					self()[i] /= scalar;
 				}
 			}
+
 			return self();
 		}
 
-		Derived divide(T scalar) const noexcept
+		Derived div(T scalar) const noexcept
 		{
 			Derived result = self();
-			return result.divideAssign(scalar);
+			return result.divAssign(scalar);
 		}
 
 		Derived operator/(T scalar) const noexcept
 		{
-			return divide(scalar);
+			return div(scalar);
 		}
 
 		Derived& operator/=(T scalar) noexcept
 		{
-			return divideAssign(scalar);
+			return divAssign(scalar);
 		}
 
-		template<typename R>
-		friend auto operator*(R scalar, const Derived& v) noexcept -> std::enable_if_t<std::is_arithmetic_v<R>, Derived>
-		{
-			static_assert(std::is_arithmetic_v<R>);
-			return v * static_cast<T>(scalar);
-		}
-
-		std::string toString() const
+		std::string toString(int precision = 2) const
 		{
 			std::stringstream ss;
+
+			ss << std::fixed << std::setprecision(precision);
 
 			ss << "(";
 			for (size_t i = 0; i < N; i++)
@@ -356,7 +360,7 @@ namespace ObsidianEngine::detail
 
 		static bool isEqual(const Derived& lhs, const Derived& rhs, T epsilon = Math<T>::Epsilon) noexcept
 		{
-			for (size_t i = 0; i < N; i++)
+			for (size_t i = 0; i < N; ++i)
 			{
 				if (!Math<T>::isEqual(lhs[i], rhs[i], epsilon)) return false;
 			}
@@ -678,7 +682,7 @@ namespace ObsidianEngine::detail
 			return SwizzleProxy<
 				T,
 				swizzleIndex(Str.value[I])...
-			>{ self().data };
+			>{ self().data.data() };
 		}
 	};
 }

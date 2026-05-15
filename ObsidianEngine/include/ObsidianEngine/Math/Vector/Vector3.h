@@ -13,7 +13,7 @@ namespace ObsidianEngine::detail
 		{
 			struct { T x, y, z; };
 			struct { T r, g, b; };
-			T data[3];
+			std::array<T, 3> data;
 		};
 
 		constexpr Vector() noexcept : data{} {}

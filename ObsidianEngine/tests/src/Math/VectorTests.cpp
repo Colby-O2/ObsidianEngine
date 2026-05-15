@@ -95,9 +95,9 @@ void test_vector_swizzling()
 
             if constexpr (N >= 3)
             {
-                testV.template swizzle<"zyx">() = Vector<T, 3>(static_cast<T>(100), static_cast<T>(200), static_cast<T>(300));
-                CHECK_CLOSE(testV.x, static_cast<T>(300));
-                CHECK_CLOSE(testV.y, static_cast<T>(200));
+                testV.template swizzle<"zxy">() = Vector<T, 3>(static_cast<T>(100), static_cast<T>(200), static_cast<T>(300));
+                CHECK_CLOSE(testV.x, static_cast<T>(200));
+                CHECK_CLOSE(testV.y, static_cast<T>(300));
                 CHECK_CLOSE(testV.z, static_cast<T>(100));
             }
         }

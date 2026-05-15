@@ -1226,13 +1226,13 @@ TEST_SUITE("Math")
             SUBCASE("Scalar Multiplication")
             {
                 Quaternion<T> q(1, 1, 1, 1);
-                Quaternion<T> res = q * 2.0f;
+                Quaternion<T> res = q.mulScalar(2.0f);
                 CHECK_CLOSE(res.x, 2.0f);
 
-                Quaternion<T> resLeft = 0.5f * res;
+                Quaternion<T> resLeft = res.mulScalar(0.5f);
                 CHECK_CLOSE(resLeft.x, 1.0f);
 
-                q *= 3.0f;
+                q.mulScalarAssign(3.0f);
                 CHECK_CLOSE(q.x, 3.0f);
             }
             SUBCASE("Quaternion<T> * Vector<T, 3> (Rotate)")

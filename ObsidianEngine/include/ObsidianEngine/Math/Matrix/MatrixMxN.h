@@ -8,6 +8,8 @@
 #include <iostream>
 #include <iomanip>
 #include <numbers>
+#include <string>
+#include <sstream>
 
 namespace ObsidianEngine::detail
 {
@@ -21,7 +23,7 @@ namespace ObsidianEngine::detail
 
 		static_assert(std::is_arithmetic_v<T>, "Matrix type must be numeric!");
 
-		std::array<T, Rows* Cols> data;
+		std::array<T, Rows * Cols> data;
 
 		constexpr Matrix() noexcept : data{} {}
 
@@ -110,7 +112,7 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		static constexpr Matrix fromRows(std::initializer_list<Vector<T, Cols>> rows)
+		static constexpr Matrix fromRows(std::initializer_list<Vector<T, Cols>> rows) noexcept
 		{
 			Matrix m;
 			size_t r = 0;
@@ -129,7 +131,7 @@ namespace ObsidianEngine::detail
 		}
 
 		template<typename... Args>
-		static constexpr Matrix fromRows(Args... args)
+		static constexpr Matrix fromRows(Args... args) noexcept
 		{
 			static_assert(sizeof...(Args) == Rows * Cols, "fromRows must receive exactly Rows * Cols arguments!");
 
@@ -147,13 +149,13 @@ namespace ObsidianEngine::detail
 			return m;
 		}
 
-		static constexpr Matrix fromColumns(std::initializer_list<Vector<T, Rows>> rows)
+		static constexpr Matrix fromColumns(std::initializer_list<Vector<T, Rows>> rows) noexcept
 		{
 			return Matrix(rows);
 		}
 
 		template<typename... Args>
-		static constexpr Matrix fromColumns(Args... args)
+		static constexpr Matrix fromColumns(Args... args) noexcept
 		{
 			static_assert(sizeof...(Args) == Rows * Cols, "fromColumns must receive exactly Rows * Cols arguments!");
 
@@ -161,7 +163,7 @@ namespace ObsidianEngine::detail
 		}
 
 		template<typename = void>
-		Vector<T, (Rows > Cols ? Rows : Cols)> asVector() const
+		Vector<T, (Rows > Cols ? Rows : Cols)> asVector() const noexcept
 		{
 			static_assert(Rows == 1 || Cols == 1, "asVector() requires the matrix to be either a single row or a single column.");
 
@@ -175,13 +177,13 @@ namespace ObsidianEngine::detail
 			}
 		}
 
-		Vector<T, Rows> getColumn(size_t col) const
+		Vector<T, Rows> getColumn(size_t col) const noexcept
 		{
 			assert(col < Cols);
 			return (*this)[col];
 		}
 
-		Vector<T, Cols> getRow(size_t row) const
+		Vector<T, Cols> getRow(size_t row) const noexcept
 		{
 			assert(row < Rows);
 			Vector<T, Cols> result;
@@ -192,7 +194,7 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		void setColumn(size_t col, const Vector<T, Rows>& v)
+		void setColumn(size_t col, const Vector<T, Rows>& v) noexcept
 		{
 			assert(col < Cols);
 			for (size_t r = 0; r < Rows; ++r)
@@ -201,7 +203,7 @@ namespace ObsidianEngine::detail
 			}
 		}
 
-		void setRow(size_t row, const Vector<T, Cols>& v)
+		void setRow(size_t row, const Vector<T, Cols>& v) noexcept
 		{
 			assert(row < Rows);
 			for (size_t c = 0; c < Cols; ++c)
@@ -211,7 +213,7 @@ namespace ObsidianEngine::detail
 		}
 
 		template<size_t SubRows, size_t SubCols>
-		Matrix<SubRows, SubCols, T> slice(size_t startRow = 0, size_t startCol = 0) const
+		Matrix<SubRows, SubCols, T> slice(size_t startRow = 0, size_t startCol = 0) const noexcept
 		{
 			static_assert(SubRows <= Rows, "Slice rows exceed matrix rows.");
 			static_assert(SubCols <= Cols, "Slice columns exceed matrix columns.");
@@ -231,7 +233,7 @@ namespace ObsidianEngine::detail
 		}
 
 		template<size_t SubRows, size_t SubCols>
-		void setBlock(const Matrix<SubRows, SubCols, T>& block, size_t startRow = 0, size_t startCol = 0)
+		void setBlock(const Matrix<SubRows, SubCols, T>& block, size_t startRow = 0, size_t startCol = 0) noexcept
 		{
 			assert(startRow + SubRows <= Rows && "Block out of row bounds!");
 			assert(startCol + SubCols <= Cols && "Block out of column bounds!");
@@ -245,31 +247,31 @@ namespace ObsidianEngine::detail
 			}
 		}
 
-		Vector<T, Rows>& operator[](size_t col)
+		Vector<T, Rows>& operator[](size_t col) noexcept
 		{
 			assert(col < Cols);
-			return reinterpret_cast<Vector<T, Rows>&>(data.at(col * Rows));
+			return reinterpret_cast<Vector<T, Rows>&>(data[col * Rows]);
 		}
 
-		const Vector<T, Rows>& operator[](size_t col) const
+		const Vector<T, Rows>& operator[](size_t col) const noexcept
 		{
 			assert(col < Cols);
-			return reinterpret_cast<const Vector<T, Rows>&>(data.at(col * Rows));
+			return reinterpret_cast<const Vector<T, Rows>&>(data[col * Rows]);
 		}
 
-		T& operator()(size_t row, size_t col)
+		T& operator()(size_t row, size_t col) noexcept
 		{
 			assert(row < Rows && col < Cols);
-			return data.at(col * Rows + row);
+			return data[col * Rows + row];
 		}
 
-		const T& operator()(size_t row, size_t col) const
+		const T& operator()(size_t row, size_t col) const noexcept
 		{
 			assert(row < Rows && col < Cols);
-			return data.at(col * Rows + row);
+			return data[col * Rows + row];
 		}
 
-		static constexpr Matrix identity()
+		static constexpr Matrix identity() noexcept
 		{
 			Matrix m;
 			size_t n = (Rows < Cols) ? Rows : Cols;
@@ -277,19 +279,111 @@ namespace ObsidianEngine::detail
 			return m;
 		}
 
-		static constexpr Matrix zero()
+		static constexpr Matrix zero() noexcept
 		{
 			return Matrix();
 		}
 
+		static constexpr Matrix one() noexcept
+		{
+			Matrix m;
+			for (size_t i = 0; i < Rows * Cols; ++i)
+			{
+				data[i] = static_cast<T>(1);
+			}
+			return m;
+		}
+
+		Matrix<Rows, Cols, T>& divAssign(T scalar) noexcept
+		{
+			if constexpr (std::is_floating_point_v<T>)
+			{
+				assert(Math<T>::abs(scalar) > Math<T>::Epsilon && "Division by zero!");
+
+				T invScalar = static_cast<T>(1) / scalar;
+				for (size_t i = 0; i < Rows * Cols; ++i)
+				{
+					data[i] *= invScalar;
+				}
+			}
+			else
+			{
+				assert(scalar != static_cast<T>(0) && "Division by zero!");
+
+				for (size_t i = 0; i < Rows * Cols; ++i)
+				{
+					data[i] /= scalar;
+				}
+			}
+
+			return *this;
+		}
+
+		Matrix<Rows, Cols, T> div(T scalar) const noexcept
+		{
+			Matrix<Rows, Cols, T> result = *this;
+			result.divAssign(scalar);
+			return result;
+		}
+
+		Matrix<Rows, Cols, T> operator/(T scalar) const noexcept
+		{
+			return div(scalar);
+		}
+
+		Matrix<Rows, Cols, T> operator/=(T scalar) const noexcept
+		{
+			return divAssign(scalar);
+		}
+
+		Matrix<Rows, Cols, T>& mulAssign(T scalar) noexcept
+		{
+			for (size_t i = 0; i < Rows * Cols; ++i)
+			{
+				data[i] *= scalar;
+			}
+			return *this;
+		}
+
+		Matrix<Rows, Cols, T> mul(T scalar) const noexcept
+		{
+			Matrix<Rows, Cols, T> result = *this;
+			result.mulAssign(scalar);
+			return result;
+		}
+
+		Matrix<Rows, Cols, T> operator*(T scalar) const noexcept
+		{
+			return mul(scalar);
+		}
+
+		friend Matrix<RowsCount, ColsCount, T> operator*(T scalar, const Matrix<RowsCount, ColsCount, T>& m) noexcept
+		{
+			return m.mul(scalar);
+		}
+
+		Matrix<Rows, Cols, T> operator*=(T scalar) noexcept
+		{
+			return mulAssign(scalar);
+		}
+
+		Matrix<Rows, Cols, T>& mulAssign(const Matrix<Rows, Cols, T>& rhs) noexcept requires (Rows == Cols)
+		{
+			*this = (*this) * rhs;
+			return *this;
+		}
+
 		template<size_t NewCols>
-		Matrix<Rows, NewCols, T> operator*(const Matrix<Cols, NewCols, T>& rhs) const
+		Matrix<Rows, NewCols, T> mul(const Matrix<Cols, NewCols, T>& rhs) const noexcept
 		{
 			Matrix<Rows, NewCols, T> result;
-			for (size_t r = 0; r < Rows; ++r) {
-				for (size_t c = 0; c < NewCols; ++c) {
+			for (size_t r = 0; r < Rows; ++r)
+			{
+				for (size_t c = 0; c < NewCols; ++c) 
+				{
 					T sum = 0;
-					for (size_t k = 0; k < Cols; ++k) {
+					for (size_t k = 0; k < Cols; ++k) 
+					{
 						sum += (*this)(r, k) * rhs(k, c);
 					}
 					result(r, c) = sum;
@@ -298,7 +392,18 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		Vector<T, Rows> operator*(const Vector<T, Cols>& v) const
+		template<size_t NewCols>
+		Matrix<Rows, NewCols, T> operator*(const Matrix<Cols, NewCols, T>& rhs) const noexcept
+		{
+			return mul(rhs);
+		}
+
+		Matrix<Rows, Cols, T>& operator*=(const Matrix<Rows, Cols, T>& rhs) noexcept requires (Rows == Cols)
+		{
+			return mulAssign(rhs);
+		}
+
+		Vector <T, Rows> mul(const Vector<T, Cols>& rhs) const noexcept
 		{
 			Vector<T, Rows> result;
 
@@ -307,7 +412,7 @@ namespace ObsidianEngine::detail
 				T sum = 0;
 				for (size_t c = 0; c < Cols; ++c)
 				{
-					sum += (*this)(r, c) * v[c];
+					sum += (*this)(r, c) * rhs[c];
 				}
 				result[r] = sum;
 			}
@@ -315,7 +420,103 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		Matrix<Cols, Rows, T> transpose() const
+		Vector <T, Cols> mulLeft(const Vector<T, Rows>& rhs) const noexcept
+		{
+			Vector<T, Cols> result;
+
+			for (size_t c = 0; c < Cols; ++c)
+			{
+				T sum = 0;
+				for (size_t r = 0; r < Rows; ++r)
+				{
+					sum += rhs[r] * (*this)(r, c);
+				}
+				result[c] = sum;
+			}
+
+			return result;
+		}
+
+		Vector<T, Rows> operator*(const Vector<T, Cols>& rhs) const noexcept
+		{
+			return mul(rhs);
+		}
+
+		friend Vector<T, ColsCount> operator*(const Vector<T, RowsCount>& lhs, const Matrix& rhs) noexcept
+		{
+			return rhs.mulLeft(lhs);
+		}
+
+		Matrix<Rows, Cols, T>& addAssign(const Matrix<Rows, Cols, T>& rhs) noexcept
+		{
+			for (size_t i = 0; i < Rows * Cols; ++i)
+			{
+				(*this)[i] += rhs[i];
+			}
+
+			return *this;
+		}
+
+		Matrix<Rows, Cols, T> add(const Matrix<Rows, Cols, T>& rhs) noexcept
+		{
+			Matrix<Rows, Cols, T> result = *this;
+			return result.addAssign(rhs);
+		}
+
+		Matrix<Rows, Cols, T> operator+(const Matrix<Rows, Cols, T>& rhs) const noexcept
+		{
+			return add(rhs);
+		}
+
+		Matrix<Rows, Cols, T>& operator+=(const Matrix<Rows, Cols, T>& rhs) noexcept
+		{
+			return addAssign(rhs);
+		}
+
+		Matrix<Rows, Cols, T>& subAssign(const Matrix<Rows, Cols, T>& rhs) noexcept
+		{
+			for (size_t i = 0; i < Rows * Cols; ++i)
+			{
+				(*this)[i] -= rhs[i];
+			}
+
+			return *this;
+		}
+
+		Matrix<Rows, Cols, T> sub(const Matrix<Rows, Cols, T>& rhs) noexcept
+		{
+			Matrix<Rows, Cols, T> result = *this;
+			return result.subAssign(rhs);
+		}
+
+		Matrix<Rows, Cols, T> operator-(const Matrix<Rows, Cols, T>& rhs) const noexcept
+		{
+			return sub(rhs);
+		}
+
+		Matrix<Rows, Cols, T>& operator-=(const Matrix<Rows, Cols, T>& rhs) noexcept
+		{
+			return subAssign(rhs);
+		}
+
+		Matrix<Rows, Cols, T> negate() noexcept
+		{
+			Matrix<Rows, Cols, T> result{};
+
+			for (size_t i = 0; i < Rows * Cols; ++i)
+			{
+				result[i] = -(*this)[i];
+			}
+
+			return result;
+		}
+
+		Matrix<Rows, Cols, T> operator-() const noexcept
+		{
+			return negate();
+		}
+
+		Matrix<Cols, Rows, T> transpose() const noexcept
 		{
 			Matrix<Cols, Rows, T> result;
 
@@ -330,12 +531,12 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		bool isIdentity() const
+		bool isIdentity() const noexcept
 		{
 			return *this == identity();
 		}
 
-		T trace() const
+		T trace() const noexcept
 		{
 			static_assert(Rows == Cols, "Trace is usually defined for square matrices only!");
 
@@ -351,13 +552,13 @@ namespace ObsidianEngine::detail
 			return sum;
 		}
 
-		T determinant() const
+		T determinant() const noexcept
 		{
 			static_assert(Rows == Cols, "Determinant can only be calculated for square matrices!");
-			return calculate_determinant(*this);
+			return calculateDeterminant(*this);
 		}
 
-		T minor_value(size_t row, size_t col) const
+		T minorValue(size_t row, size_t col) const noexcept
 		{
 			static_assert(Rows == Cols && Rows > 1, "Minor requires a square matrix of at least 2x2");
 
@@ -377,13 +578,13 @@ namespace ObsidianEngine::detail
 			return sub.determinant();
 		}
 
-		T cofactor(size_t row, size_t col) const
+		T cofactor(size_t row, size_t col) const noexcept
 		{
-			T m = minor_value(row, col);
+			T m = minorValue(row, col);
 			return ((row + col) % 2 == 0) ? m : -m;
 		}
 
-		auto inverse() const -> Matrix<Rows, Cols, std::common_type_t<T, float>>
+		auto inverse() const noexcept
 		{
 			static_assert(Rows == Cols, "Only square matrices can be inverted!");
 
@@ -391,9 +592,7 @@ namespace ObsidianEngine::detail
 
 			FPT det = Math<FPT>::val(this->determinant());
 
-			FPT epsilon = Math<FPT>::val(1e-7);
-
-			if (std::abs(det) < epsilon)
+			if (std::abs(det) < Math<FPT>::Epsilon)
 			{
 				return Matrix<Rows, Cols, FPT>::identity();
 			}
@@ -412,41 +611,62 @@ namespace ObsidianEngine::detail
 			return result;
 		}
 
-		bool operator==(const Matrix& rhs) const
+		static bool isEqual(const Matrix& rhs, const Matrix& lhs, T epsilon = Math<T>::Epsilon) noexcept
 		{
-			return data == rhs.data;
+			for (size_t i = 0; i < Rows * Cols; ++i)
+			{
+				if (!Math<T>::isEqual(lhs.data[i], rhs.data[i], epsilon)) return false;
+			}
+
+			return true;
 		}
 
-		bool operator!=(const Matrix& rhs) const
+		bool equals(const Matrix& rhs, T epsilon = Math<T>::Epsilon) const noexcept
 		{
-			return !(*this == rhs);
+			return isEqual(*this, rhs, epsilon);
+		}
+
+		bool operator==(const Matrix& rhs) const noexcept
+		{
+			return equals(rhs);
+		}
+
+		bool operator!=(const Matrix& rhs) const noexcept
+		{
+			return !equals(rhs);
+		}
+
+		std::string toString(int precision = 2) const 
+		{
+			std::ostringstream ss;
+
+			ss << std::fixed << std::setprecision(precision);
+
+			for (size_t r = 0; r < Rows; ++r) 
+			{
+				ss << "| ";
+
+				for (size_t c = 0; c < Cols; ++c) 
+				{
+					ss << std::setw(precision + 4) << std::right << (*this)(r, c);
+					if (c < Cols - 1) ss << "  ";
+				}
+
+				ss << " |" << "\n";
+			}
+
+			return ss.str();
 		}
 
 		friend std::ostream& operator<<(std::ostream& os, const Matrix& m)
 		{
-			std::ios_base::fmtflags f(os.flags());
-
-			os << "[\n";
-			for (size_t r = 0; r < Rows; ++r)
-			{
-				os << "  ";
-				for (size_t c = 0; c < Cols; ++c)
-				{
-					os << std::setw(10) << std::left << std::setprecision(4) << m(r, c);
-
-					if (c < Cols - 1) os << " ";
-				}
-				os << "\n";
-			}
-			os << "]";
-
-			os.flags(f);
+			os << m.toString();
 			return os;
 		}
 
 	private:
 		template<size_t Dim>
-		static T calculate_determinant(const Matrix<Dim, Dim, T>& m)
+		static T calculateDeterminant(const Matrix<Dim, Dim, T>& m) noexcept
 		{
 			if constexpr (Dim == 1)
 			{
@@ -472,7 +692,7 @@ namespace ObsidianEngine::detail
 						}
 					}
 
-					T term = m(0, c) * calculate_determinant(sub);
+					T term = m(0, c) * calculateDeterminant(sub);
 					if (c % 2 == 1) det -= term;
 					else det += term;
 				}
@@ -480,24 +700,6 @@ namespace ObsidianEngine::detail
 			}
 		}
 	};
-
-	template<size_t Rows, size_t Cols, typename T>
-	inline Vector<T, Cols> operator*(const Vector<T, Rows>& v, const Matrix<Rows, Cols, T>& m)
-	{
-		Vector<T, Cols> result;
-
-		for (size_t c = 0; c < Cols; ++c)
-		{
-			T sum = 0;
-			for (size_t r = 0; r < Rows; ++r)
-			{
-				sum += v[r] * m(r, c);
-			}
-			result[c] = sum;
-		}
-
-		return result;
-	}
 }
 
 #endif

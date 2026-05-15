@@ -13,9 +13,9 @@ namespace ObsidianEngine::detail
 		{
 			struct { T x, y; };
 			struct { T r, g; };
-			T data[2];
+			std::array<T, 2> data;
 		};
-
+		
 		constexpr Vector() noexcept : data{} {}
 
 		constexpr Vector(const Vector&) noexcept = default;
