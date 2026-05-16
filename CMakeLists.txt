@@ -12,5 +12,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_subdirectory ("ObsidianEngine")
-add_subdirectory ("ObsidianEngine/projects/sierpinski")
+add_subdirectory ("ObsidianEngine/projects/Sierpinski")
+add_subdirectory ("ObsidianEngine/projects/SpinningaTriangle")
 add_subdirectory ("ObsidianEngine/tests/")

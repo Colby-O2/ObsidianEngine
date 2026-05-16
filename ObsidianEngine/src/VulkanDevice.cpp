@@ -2,6 +2,7 @@
 #include "Window.h"
 #include "ShaderCompiler.h"
 #include "VulkanPipelineBuilder.h"
+#include "ObsidianTime.h"
 
 #include <algorithm>
 #include <set>
@@ -133,10 +134,14 @@ namespace ObsidianEngine
 		createLogicalDevice();
 		createSwapChain(window);
 
+		createDescriptorSetLayout();
 		createGraphicsPipeline();
 		createCommandPool();
 		createVertexBuffer();
 		createIndexBuffer();
+		createUniformBuffers();
+		createDescriptorPool();
+		createDescriptorSets();
 		createCommandBuffers();
 
 		createSyncObjects();
@@ -439,6 +444,25 @@ namespace ObsidianEngine
 		m_swapchain = std::make_unique<VulkanSwapchain>(m_device, m_physicalDevice, m_surface, window);
 	}
 
+	void VulkanDevice::createDescriptorSetLayout()
+	{
+		vk::DescriptorSetLayoutBinding uboLayoutBinding
+		{
+			.binding = 0,
+			.descriptorType = vk::DescriptorType::eUniformBuffer, 
+			.descriptorCount = 1,
+			.stageFlags = vk::ShaderStageFlagBits::eVertex
+		};
+
+		vk::DescriptorSetLayoutCreateInfo layoutInfo
+		{
+			.bindingCount = 1,
+			.pBindings = &uboLayoutBinding
+		};
+
+		m_descriptorSetLayout = vk::raii::DescriptorSetLayout(m_device, layoutInfo);
+	}
+
 	void VulkanDevice::createGraphicsPipeline()
 	{
 		auto compiler = ShaderCompiler();
@@ -451,7 +475,7 @@ namespace ObsidianEngine
 
 		vk::raii::ShaderModule shaderModule = createShaderModule(shaderData);
 
-		vk::PipelineLayoutCreateInfo pipelineLayoutInfo{ .setLayoutCount = 0, .pushConstantRangeCount = 0 };
+		vk::PipelineLayoutCreateInfo pipelineLayoutInfo{ .setLayoutCount = 1, .pSetLayouts = &*m_descriptorSetLayout, .pushConstantRangeCount = 0 };
 		m_pipelineLayout = vk::raii::PipelineLayout(m_device, pipelineLayoutInfo);
 
 		VulkanPipelineBuilder builder(m_device);
@@ -459,7 +483,7 @@ namespace ObsidianEngine
 		VulkanPipeline pipeline = builder
 			.setShaders(shaderModule, shaderModule)
 			.setTopology(vk::PrimitiveTopology::eTriangleList)
-			.setRasterizer(vk::PolygonMode::eFill, vk::CullModeFlagBits::eBack, vk::FrontFace::eClockwise)
+			.setRasterizer(vk::PolygonMode::eFill, vk::CullModeFlagBits::eBack, vk::FrontFace::eCounterClockwise)
 			.setColorBlend(false)
 			.setDepthStencil(true, true, vk::CompareOp::eLess)
 			.build(m_pipelineLayout, m_swapchain->getFormat()->format, vk::Format::eD32Sfloat);
@@ -558,6 +582,77 @@ namespace ObsidianEngine
 		copyBuffer(stagingBuffer, m_indexBuffer, bufferSize);
 	}
 
+	void VulkanDevice::createUniformBuffers()
+	{
+		m_uniformBuffers.reserve(MAX_FRAMES_IN_FLIGHT);
+		m_uniformBuffersMemory.reserve(MAX_FRAMES_IN_FLIGHT);
+
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+		{
+			vk::DeviceSize bufferSize = sizeof(UniformBufferObject);
+			auto [buffer, bufferMem] = createBuffer(bufferSize, vk::BufferUsageFlagBits::eUniformBuffer, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+			m_uniformBuffers.emplace_back(std::move(buffer));
+			m_uniformBuffersMemory.emplace_back(std::move(bufferMem));
+
+			m_uniformBuffersMapped.emplace_back(m_uniformBuffersMemory.back().mapMemory(0, bufferSize));
+		}
+	}
+
+	void VulkanDevice::createDescriptorPool()
+	{
+		vk::DescriptorPoolSize poolSize
+		{
+			.type = vk::DescriptorType::eUniformBuffer,
+			.descriptorCount = MAX_FRAMES_IN_FLIGHT,
+		};
+
+		vk::DescriptorPoolCreateInfo poolInfo
+		{
+			.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, 
+			.maxSets = MAX_FRAMES_IN_FLIGHT, 
+			.poolSizeCount = 1, 
+			.pPoolSizes = &poolSize 
+		};
+
+		m_descriptorPool = vk::raii::DescriptorPool(m_device, poolInfo);
+	}
+
+	void VulkanDevice::createDescriptorSets()
+	{
+		std::vector<vk::DescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, *m_descriptorSetLayout);
+		vk::DescriptorSetAllocateInfo allocInfo
+		{ 
+			.descriptorPool = m_descriptorPool,
+			.descriptorSetCount = static_cast<uint32_t>(layouts.size()),
+			.pSetLayouts = layouts.data() 
+		};
+
+		m_descriptorSets = m_device.allocateDescriptorSets(allocInfo);
+
+		for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+		{
+			vk::DescriptorBufferInfo bufferInfo
+			{ 
+				.buffer = m_uniformBuffers[i], 
+				.offset = 0, 
+				.range = sizeof(UniformBufferObject)
+			};
+
+			vk::WriteDescriptorSet descriptorWrite
+			{ 
+				.dstSet = m_descriptorSets[i],
+				.dstBinding = 0,
+				.dstArrayElement = 0,
+				.descriptorCount = 1,
+				.descriptorType = vk::DescriptorType::eUniformBuffer,
+				.pBufferInfo = &bufferInfo 
+			};
+
+			m_device.updateDescriptorSets(descriptorWrite, {});
+		}
+	}
+
 	uint32_t VulkanDevice::findMemoryType(uint32_t typeFilter, vk::MemoryPropertyFlags properties)
 	{
 		vk::PhysicalDeviceMemoryProperties memProperties = m_physicalDevice.getMemoryProperties();
@@ -595,6 +690,19 @@ namespace ObsidianEngine
 		}
 	}
 
+	void VulkanDevice::updateUniformBuffer(uint32_t currentImage)
+	{
+		float time = ObsidianTime::time();
+
+		UniformBufferObject ubo{};
+		Quaternion rot = Quaternion::fromAxisAngle({0, 0, 1}, 90.0f * time);
+		ubo.model = Matrix4x4::trs({ 0, 0, 0 }, rot, {1, 1, 1});
+		ubo.view = Matrix4x4::lookAt({ 1, 2, 2 }, { 0, 0, 0 }, { 0, 0, 1 });
+		ubo.proj = Matrix4x4::perspective(45.0f, static_cast<float>(m_swapchain->getExtent().width) / static_cast<float>(m_swapchain->getExtent().height), 0.1f, 10.0f);
+		ubo.proj(1, 1) *= -1;
+		memcpy(m_uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+	}
+
 	void VulkanDevice::drawFrame(std::span<MeshRenderData> renderList)
 	{
 		auto fenceResult = m_device.waitForFences(*m_inFlightFences[m_frameIndex], vk::True, UINT64_MAX);
@@ -618,6 +726,8 @@ namespace ObsidianEngine
 			throw std::runtime_error("Failed to acquire swap chain image!");
 		}
 
+		updateUniformBuffer(m_frameIndex);
+		
 		m_device.resetFences(*m_inFlightFences[m_frameIndex]);
 
 		m_commandBuffers[m_frameIndex].reset();
@@ -689,6 +799,14 @@ namespace ObsidianEngine
 		vk::Rect2D scissor{ {0, 0}, m_swapchain->getExtent() };
 		commandBuffer.setViewport(0, viewport);
 		commandBuffer.setScissor(0, scissor);
+
+		m_commandBuffers[m_frameIndex].bindDescriptorSets(
+			vk::PipelineBindPoint::eGraphics,
+			m_pipeline->getLayout(),
+			0,
+			*m_descriptorSets[m_frameIndex],
+			nullptr
+		);
 
 		for (const auto& mesh : renderList) 
 		{

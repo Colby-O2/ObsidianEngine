@@ -1,11 +1,13 @@
-#ifndef VULKAN_DEVICE_H_
-#define VULKAN_DEVICE_H_
+#ifndef __OBSIDIANENGINE_VULKAN_DEVICE_H__
+#define __OBSIDIANENGINE_VULKAN_DEVICE_H__
 
 #include "RenderDevice.h"
 #include "VulkanSwapchain.h"
 #include "VulkanPipeline.h"
 #include "Vertex.h"
 #include "MeshRenderData.h"
+
+#include "ObsidianEngine/Math/Math.h"
 
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>
@@ -18,6 +20,13 @@
 
 namespace ObsidianEngine
 {
+    struct UniformBufferObject
+    {
+        alignas(16) Matrix4x4 model;
+        alignas(16) Matrix4x4 view;
+        alignas(16) Matrix4x4 proj;
+    };
+
     static const std::array s_vaildLayers =
     {
         "VK_LAYER_KHRONOS_validation"
@@ -88,10 +97,16 @@ namespace ObsidianEngine
         vk::raii::DeviceMemory               m_vertexBufferMemory = nullptr;
         vk::raii::Buffer                     m_indexBuffer = nullptr;
         vk::raii::DeviceMemory               m_indexBufferMemory = nullptr;
+        std::vector<vk::raii::Buffer>        m_uniformBuffers;
+        std::vector<vk::raii::DeviceMemory>  m_uniformBuffersMemory;
+        std::vector<void*>                   m_uniformBuffersMapped;
+        vk::raii::DescriptorPool             m_descriptorPool = nullptr;
+        std::vector<vk::raii::DescriptorSet> m_descriptorSets;
 
         std::unique_ptr<VulkanSwapchain>     m_swapchain;
 
         std::unique_ptr<VulkanPipeline>      m_pipeline;
+        vk::raii::DescriptorSetLayout        m_descriptorSetLayout = nullptr;
         vk::raii::PipelineLayout             m_pipelineLayout = nullptr;
         vk::raii::CommandPool                m_commandGraphicsPool = nullptr;
         vk::raii::CommandPool                m_commandTransferPool = nullptr;
@@ -116,13 +131,19 @@ namespace ObsidianEngine
         void pickDevice();
         void createLogicalDevice();
         void createSwapChain(Window* window);
+        void createDescriptorSetLayout();
         void createGraphicsPipeline();
         void createSyncObjects();
         void createCommandPool();
         void createCommandBuffers();
         void createVertexBuffer();
         void createIndexBuffer();
+        void createUniformBuffers();
+        void createDescriptorPool();
+        void createDescriptorSets();
         
+        void updateUniformBuffer(uint32_t currentImage);
+
         std::pair<vk::raii::Buffer, vk::raii::DeviceMemory> createBuffer(vk::DeviceSize size, vk::BufferUsageFlags usuage, vk::MemoryPropertyFlags propteries);
         void copyBuffer(vk::raii::Buffer& scrBuffer, vk::raii::Buffer& dstBuffer, vk::DeviceSize size);
 
