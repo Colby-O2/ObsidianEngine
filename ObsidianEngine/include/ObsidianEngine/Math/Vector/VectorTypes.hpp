@@ -1,10 +1,10 @@
-#ifndef __OBSIDIANENGINE_MATH_VECTOR_TYPES_H__
-#define __OBSIDIANENGINE_MATH_VECTOR_TYPES_H__
+#ifndef __OBSIDIANENGINE_MATH_VECTOR_TYPES_HPP__
+#define __OBSIDIANENGINE_MATH_VECTOR_TYPES_HPP__
 
-#include "ObsidianEngine/Math/Vector/Vector2.h"
-#include "ObsidianEngine/Math/Vector/Vector3.h"
-#include "ObsidianEngine/Math/Vector/Vector4.h"
-#include "ObsidianEngine/Math/Vector/VectorN.h"
+#include "ObsidianEngine/Math/Vector/Vector2.hpp"
+#include "ObsidianEngine/Math/Vector/Vector3.hpp"
+#include "ObsidianEngine/Math/Vector/Vector4.hpp"
+#include "ObsidianEngine/Math/Vector/VectorN.hpp"
 
 namespace ObsidianEngine
 {

@@ -1,9 +1,9 @@
-#ifndef __OBSIDIANENGINE_MATH_VECTORN_H__
-#define __OBSIDIANENGINE_MATH_VECTORN_H__
+#ifndef __OBSIDIANENGINE_MATH_VECTORN_HPP__
+#define __OBSIDIANENGINE_MATH_VECTORN_HPP__
 
-#include "ObsidianEngine/Math/MathUtils.h"
+#include "ObsidianEngine/Math/MathUtils.hpp"
 
-#include "ObsidianEngine/Math/Vector/VectorBase.h"
+#include "ObsidianEngine/Math/Vector/VectorBase.hpp"
 
 namespace ObsidianEngine::detail
 {

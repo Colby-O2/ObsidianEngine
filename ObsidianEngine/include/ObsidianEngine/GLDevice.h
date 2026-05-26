@@ -14,7 +14,7 @@
 #include <iostream>
 #include <vector>
 
-static char shader[] = R"yo(
+static char shader[] = R"(
 #version glslconv 
 
 attribute vec2 aPos;
@@ -35,7 +35,7 @@ vec4 Fragment()
 	return vec4(vCol, 1);
 }
 	
-)yo";
+)";
 
 namespace ObsidianEngine
 {

@@ -1,11 +1,11 @@
-#ifndef __OBSIDIANENGINE_MATH_MATRIX4x4_H__
-#define __OBSIDIANENGINE_MATH_MATRIX4x4_H__
+#ifndef __OBSIDIANENGINE_MATH_MATRIX4x4_HPP__
+#define __OBSIDIANENGINE_MATH_MATRIX4x4_HPP__
 
-#include "ObsidianEngine/Math/MathUtils.h"
-#include "ObsidianEngine/Math/Matrix/MatrixMxN.h"
+#include "ObsidianEngine/Math/MathUtils.hpp"
+#include "ObsidianEngine/Math/Matrix/MatrixMxN.hpp"
 
-#include "ObsidianEngine/Math/Quaternion/QuaternionTypes.h"
-#include "ObsidianEngine/Math/Vector/VectorTypes.h"
+#include "ObsidianEngine/Math/Quaternion/QuaternionTypes.hpp"
+#include "ObsidianEngine/Math/Vector/VectorTypes.hpp"
 
 #include <numbers>
 #include <limits>
@@ -119,8 +119,8 @@ namespace ObsidianEngine::detail
 		{
 			return Vector<T, 3>{
 				(*this)(0, 3),
-					(*this)(1, 3),
-					(*this)(2, 3)
+				(*this)(1, 3),
+				(*this)(2, 3)
 			};
 		}
 

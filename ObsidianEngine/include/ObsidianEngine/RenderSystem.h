@@ -1,7 +1,7 @@
 #ifndef RENDER_SYSTEM_H_
 #define RENDER_SYSTEM_H_
 
-#include "System.h"
+#include "ECS/System.h"
 #include "MeshComponent.h"
 #include "VulkanDevice.h"
 

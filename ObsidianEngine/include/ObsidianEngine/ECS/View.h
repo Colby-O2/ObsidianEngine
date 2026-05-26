@@ -1,5 +1,5 @@
-#ifndef VIEW_H_
-#define VIEW_H_
+#ifndef __OBSIDIANENGINE_ECS_VIEW_HPP__
+#define __OBSIDIANENGINE_ECS_VIEW_HPP__
 
 #include "Registry.h"
 

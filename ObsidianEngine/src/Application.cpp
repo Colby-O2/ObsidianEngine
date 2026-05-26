@@ -1,5 +1,5 @@
 #include "Application.h"   
-#include "Scene.h"          
+#include "ECS/Scene.h"          
 #include "MeshComponent.h" 
 #include "VulkanDevice.h"  
 #include "Vertex.h"
@@ -53,7 +53,7 @@ void ObsidianEngine::Application::initRender()
 
 void ObsidianEngine::Application::mainLoop()
 {
-	static float timer = 0.0f;
+	// static float timer = 0.0f;
 
 	while (!m_window->shouldClose())
 	{
@@ -61,12 +61,12 @@ void ObsidianEngine::Application::mainLoop()
 
 		ObsidianTime::update(m_window->getTime());
 
-		timer += ObsidianTime::deltaTime();
-		if (timer >= 0.25f)
-		{
-			std::cout << "\rFPS: " << 1.0f / ObsidianTime::deltaTime() << "   " << std::flush;
-			timer = 0.0f;
-		}
+		//timer += ObsidianTime::deltaTime();
+		//if (timer >= 0.25f)
+		//{
+		//	std::cout << "\rFPS: " << 1.0f / ObsidianTime::deltaTime() << "   " << std::flush;
+		//	timer = 0.0f;
+		//}
 
 		m_activeScene->onUpdate(ObsidianTime::deltaTime());
 

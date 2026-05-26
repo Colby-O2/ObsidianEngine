@@ -2,7 +2,7 @@
 #define  __OBSIDIANENGINE_MATH_QUATERNION_HELPERS_H__
 
 #include "doctest/doctest.h"
-#include "ObsidianEngine/Math/Math.h"
+#include "ObsidianEngine/Math/Math.hpp"
 
 #define EPSILON 0.0001f
 

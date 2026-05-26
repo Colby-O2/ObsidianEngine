@@ -1,5 +1,5 @@
-#ifndef COMPONENT_POOL_H_
-#define COMPONENT_POOL_H_
+#ifndef __OBSIDIANENGINE_ECS_COMPONENT_POOL_HPP__
+#define __OBSIDIANENGINE_ECS_COMPONENT_POOL_HPP__
 
 #include "Entity.h"
 #include "SparseSet.h"

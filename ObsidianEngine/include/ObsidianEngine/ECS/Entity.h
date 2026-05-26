@@ -1,5 +1,5 @@
-#ifndef ENTITY_H_
-#define ENTITY_H_
+#ifndef __OBSIDIANENGINE_ECS_ENTITY_HPP__
+#define __OBSIDIANENGINE_ECS_ENTITY_HPP__
 
 #include <cstdint>
 

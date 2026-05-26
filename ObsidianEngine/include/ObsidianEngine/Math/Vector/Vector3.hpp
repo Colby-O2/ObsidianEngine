@@ -1,8 +1,8 @@
-#ifndef __OBSIDIANENGINE_MATH_VECTOR3_H__
-#define __OBSIDIANENGINE_MATH_VECTOR3_H__
+#ifndef __OBSIDIANENGINE_MATH_VECTOR3_HPP__
+#define __OBSIDIANENGINE_MATH_VECTOR3_HPP__
 
-#include "ObsidianEngine/Math/MathUtils.h"
-#include "ObsidianEngine/Math/Vector/VectorBase.h"
+#include "ObsidianEngine/Math/MathUtils.hpp"
+#include "ObsidianEngine/Math/Vector/VectorBase.hpp"
 
 namespace ObsidianEngine::detail
 {

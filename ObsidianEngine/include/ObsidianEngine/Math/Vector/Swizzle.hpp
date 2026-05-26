@@ -1,5 +1,5 @@
-#ifndef __OBSIDIANENGINE_MATH_SWIZZLE_H__
-#define __OBSIDIANENGINE_MATH_SWIZZLE_H__
+#ifndef __OBSIDIANENGINE_MATH_SWIZZLE_HPP__
+#define __OBSIDIANENGINE_MATH_SWIZZLE_HPP__
 
 #include "ObsidianEngine/StringLiteral.h"
 

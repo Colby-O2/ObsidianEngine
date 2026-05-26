@@ -1,5 +1,5 @@
-#ifndef SPARSE_SET_H_
-#define SPARSE_SET_H_
+#ifndef __OBSIDIANENGINE_ECS_SPARSE_SET_HPP__
+#define __OBSIDIANENGINE_ECS_SPARSE_SET_HPP__
 
 #include "Entity.h"
 

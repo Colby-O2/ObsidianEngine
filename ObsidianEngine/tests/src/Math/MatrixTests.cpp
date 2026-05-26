@@ -1,7 +1,7 @@
 #include "doctest/doctest.h"
 
 #include "helpers.h"
-#include "ObsidianEngine/Math/Math.h"
+#include "ObsidianEngine/Math/Math.hpp"
 #include <string>
 
 using namespace ObsidianEngine::detail;

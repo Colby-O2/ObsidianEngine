@@ -1,5 +1,5 @@
-#ifndef __OBSIDIANENGINE_MATH_VECTOR_BASE_H__
-#define __OBSIDIANENGINE_MATH_VECTOR_BASE_H__
+#ifndef __OBSIDIANENGINE_MATH_VECTOR_BASE_HPP__
+#define __OBSIDIANENGINE_MATH_VECTOR_BASE_HPP__
 
 #include <array>
 #include <cassert>
@@ -12,8 +12,8 @@
 #include <sstream>
 
 
-#include "ObsidianEngine/Math/MathUtils.h"
-#include "ObsidianEngine/Math/Vector/Swizzle.h"
+#include "ObsidianEngine/Math/MathUtils.hpp"
+#include "ObsidianEngine/Math/Vector/Swizzle.hpp"
 #include "ObsidianEngine/StringLiteral.h"
 
 namespace ObsidianEngine::detail

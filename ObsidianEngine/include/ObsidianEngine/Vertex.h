@@ -4,7 +4,7 @@
 #include <vulkan/vulkan_raii.hpp>
 #include <vector>
 
-#include "ObsidianEngine/Math/Vector/VectorTypes.h"
+#include "ObsidianEngine/Math/Vector/VectorTypes.hpp"
 
 namespace ObsidianEngine
 {

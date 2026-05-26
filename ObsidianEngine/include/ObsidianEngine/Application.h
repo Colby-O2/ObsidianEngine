@@ -3,7 +3,7 @@
 
 #include "Window.h"
 #include "RenderDevice.h"
-#include "Scene.h"
+#include "ECS/Scene.h"
 
 #include <iostream>
 #include <memory>

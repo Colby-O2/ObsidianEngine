@@ -1,5 +1,5 @@
-#ifndef SCENE_H_
-#define SCENE_H_
+#ifndef __OBSIDIANENGINE_ECS_SCENE_HPP__
+#define __OBSIDIANENGINE_ECS_SCENE_HPP__
 
 #include "Entity.h"
 #include "View.h"
@@ -31,6 +31,20 @@ namespace ObsidianEngine
         void addSystem(Args&&... args) 
         {
             m_systems.emplace_back(std::make_unique<T>(std::forward<Args>(args)...));
+        }
+
+        template<typename T>
+        T* getSystem()
+        {
+            for (auto& system : m_systems)
+            {
+                T* castedSystem = dynamic_cast<T*>(system.get());
+                if (castedSystem != nullptr)
+                {
+                    return castedSystem;
+                }
+            }
+            return nullptr;
         }
 
         void onUpdate(float dt) 

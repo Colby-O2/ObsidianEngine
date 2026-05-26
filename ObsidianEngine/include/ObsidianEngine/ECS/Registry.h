@@ -1,5 +1,5 @@
-#ifndef REGISTRY_H_
-#define REGISTRY_H_
+#ifndef __OBSIDIANENGINE_ECS_REGISTRY_HPP__
+#define __OBSIDIANENGINE_ECS_REGISTRY_HPP__
 
 #include "Entity.h"
 #include "ComponentPool.h"

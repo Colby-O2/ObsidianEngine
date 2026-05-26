@@ -4,7 +4,7 @@
 #include "ObsidianEngine/Application.h"
 #include "ObsidianEngine/Vertex.h"
 #include "ObsidianEngine/MeshComponent.h"
-#include "ObsidianEngine/Entity.h"
+#include "ObsidianEngine/ECS/Entity.h"
 
 #include <vector>
 #include <unordered_map>

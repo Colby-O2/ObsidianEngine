@@ -1,8 +1,8 @@
-#ifndef __OBSIDIANENGINE_MATH_MATRIX_TYPES_H__
-#define __OBSIDIANENGINE_MATH_MATRIX_TYPES_H__
+#ifndef __OBSIDIANENGINE_MATH_MATRIX_TYPES_HPP__
+#define __OBSIDIANENGINE_MATH_MATRIX_TYPES_HPP__
 
-#include "ObsidianEngine/Math/Matrix/MatrixMxN.h"
-#include "ObsidianEngine/Math/Matrix/Matrix4x4.h"
+#include "ObsidianEngine/Math/Matrix/MatrixMxN.hpp"
+#include "ObsidianEngine/Math/Matrix/Matrix4x4.hpp"
 
 namespace ObsidianEngine
 {

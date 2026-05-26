@@ -1,9 +1,9 @@
-#ifndef  __OBSIDIANENGINE_MATH_QUATERNION_H__
-#define  __OBSIDIANENGINE_MATH_QUATERNION_H__
+#ifndef  __OBSIDIANENGINE_MATH_QUATERNION_HPP__
+#define  __OBSIDIANENGINE_MATH_QUATERNION_HPP__
 
-#include "ObsidianEngine/Math/MathUtils.h"
-#include "ObsidianEngine/Math/Vector/VectorTypes.h"
-#include "ObsidianEngine/Math/Matrix/MatrixTypes.h"
+#include "ObsidianEngine/Math/MathUtils.hpp"
+#include "ObsidianEngine/Math/Vector/VectorTypes.hpp"
+#include "ObsidianEngine/Math/Matrix/MatrixTypes.hpp"
 
 #include <iostream>
 #include <iomanip>
@@ -476,9 +476,9 @@ namespace ObsidianEngine::detail
 		{
 			assert(Math<T>::abs(lengthSquared() - 1.0f) < 0.01f && "Quaternion must be normalized to rotate a vector!");
 
-			Vector<T, 3> q_vec(x, y, z);
-			Vector<T, 3> t = Vector<T, 3>::cross(q_vec, v) * Math<T>::val(2);
-			return v + (t * w) + Vector<T, 3>::cross(q_vec, t);
+			Vector<T, 3> qVec(x, y, z);
+			Vector<T, 3> t = Vector<T, 3>::cross(qVec, v) * Math<T>::val(2);
+			return v + (t * w) + Vector<T, 3>::cross(qVec, t);
 		}
 
 		Vector<T, 3> forward() const noexcept { return rotate(Vector<T, 3>(0, 0, 1)); }

@@ -7,7 +7,7 @@
 #include "Vertex.h"
 #include "MeshRenderData.h"
 
-#include "ObsidianEngine/Math/Math.h"
+#include "ObsidianEngine/Math/Math.hpp"
 
 #define VULKAN_HPP_NO_STRUCT_CONSTRUCTORS
 #include <vulkan/vulkan_raii.hpp>

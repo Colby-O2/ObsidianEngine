@@ -1,5 +1,5 @@
-#ifndef __OBSIDIANENGINE_MATH_UTILS_H__
-#define __OBSIDIANENGINE_MATH_UTILS_H__
+#ifndef __OBSIDIANENGINE_MATH_UTILS_HPP__
+#define __OBSIDIANENGINE_MATH_UTILS_HPP__
 
 #include <cmath>
 #include <algorithm>
@@ -146,6 +146,12 @@ namespace ObsidianEngine
 			static int roundToInt(T val) 
 			{ 
 				return Math<int>::val(std::round(val));
+			}
+
+
+			static T mod(T a, T b)
+			{
+				return std::fmod(a, b);
 			}
 
 			static T lerpUnclamped();

@@ -1,7 +1,7 @@
-#ifndef  __OBSIDIANENGINE_MATH_QUATERNION_TYPES_H__
-#define  __OBSIDIANENGINE_MATH_QUATERNION_TYPES_H__
+#ifndef  __OBSIDIANENGINE_MATH_QUATERNION_TYPES_HPP__
+#define  __OBSIDIANENGINE_MATH_QUATERNION_TYPES_HPP__
 
-#include "ObsidianEngine/Math/Quaternion/Quaternion.h"
+#include "ObsidianEngine/Math/Quaternion/Quaternion.hpp"
 
 namespace ObsidianEngine
 {
