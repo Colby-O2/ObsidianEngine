@@ -81,17 +81,18 @@ protected:
 
         std::string srcHealth = R"(
                 let a = 20 * 10 + -1 + (20 / 3)
-                let maxHp = 100.0
-                let hp = maxHp
-                    
-                let isAlive -> hp > 0 end        
 
-                let Start ->
-                    log "a = " a
-                end
+                component HealthComponent
+                    let maxHp = 100.0
+                    let hp = maxHp      
 
-                let Update dt ->
-                    let hp = hp - 10.0 * dt
+                    fn Start()
+                        log("a = ", a)
+                    end
+
+                    fn Update(dt)
+                        self.hp -= 10.0 * dt
+                    end
                 end
         )";
 
@@ -100,20 +101,20 @@ protected:
                 let timer = 0.0
                 let interval = 1.0 
 
-                let Update dt ->
+                fn Update(dt)
                     let timer = timer + dt
                     if timer > interval then 
                         let fps = 1 / dt
                         log "FPS: " fps
                         let timer = 0
 
-                        let healthComp = GetComponent "HealthComponent"
-                        let currentHp = GetProperty healthComp "hp"
-                        log "FPS System checked health component. HP: " currentHp
+                        let healthComp = GetComponent("HealthComponent")
+                        let currentHp = GetProperty(healthComp, "hp")
+                        log("FPS System checked health component. HP: ", currentHp)
 
                         if currentHp < 0 then
-                            SetProperty healthComp "hp" 100
-                            log "FPS System set HP back to 100"
+                            SetProperty(healthComp, "hp", 100)
+                            log("FPS System set HP back to 100")
                         end
                    end 
                 end
@@ -136,7 +137,7 @@ protected:
                 end
             end
 
-            fn foo2()
+            fn foo()
                log("Helper Func")
             end
 
@@ -144,9 +145,9 @@ protected:
                 # let only assessable from within this component
                 let timer = 0.0
                 # global are global variable that can be assessed anywhere 
-                global interval = 1.0
+                let interval = 1.0
 
-                global fn foo()
+                fn foo()
                     log("This function can be called in other scripts via entity.GetComponent().foo()")
                 end 
 
@@ -156,31 +157,29 @@ protected:
 
                 # function are local by default 
                 fn Update(dt)
-                    log("At Update")
-                    #self.timer += dt
+                    #log("At Update ", self.timer, " ", self.interval)
+                    self.timer += dt
         
                     #foo()
 
-                    #if self.timer > self.interval then 
-	                    #let fps = 1.0 / dt
-	                    #log("FPS: ", fps)
-                        #timer = 0.0
-                        #log(fps)
-                        #log("This belongs to entity", self.entity, ".")
+                    if self.timer > self.interval then 
+	                    let fps = 1.0 / dt
+	                    log("FPS: ", fps)
+                        timer = 0.0
 
-                        #let healthComp = self.GetComponent("HealthComponent")
-                        #let currentHp = healthComp.hp
-                        #log("HP: ", currentHp)
+                        let healthComp = self.GetComponent("HealthComponent")
+                        let currentHp = healthComp.hp
+                        log("FPS System on Entity ", self.entity, " checked health component. HP: ", currentHp)
 
-                        #if currentHp < 0.0 then
-                        #      healthComp.hp = 100.0
-                        #      log("ResetHp to 100")
+                        if currentHp < 0.0 then
+                              healthComp.hp = 100.0
+                              log("FPS System set HP back to 100")
 	                    #elif self.interval == 2 then
 	                    #      log("Foo")
                         #else
                         #      log("Foo2") 
-                        #end
-                    #end
+                        end
+                    end
                 end
             end
         )yo";
@@ -193,9 +192,12 @@ protected:
         fpsComp.scriptTypeName = "FPSComponent";
         fpsComp.rawSourceCode = newSrc;
 
-        ScriptComponent playerScripts{ fpsComp };
+        ScriptComponent playerScripts{ fpsComp, healthComp };
 
         m_activeScene->getRegistry().addComponent<ScriptComponent>(player, playerScripts);
+
+        EntityID player2 = m_activeScene->createEntity();
+        m_activeScene->getRegistry().addComponent<ScriptComponent>(player2, playerScripts);
 
         m_activeScene->addSystem<ScriptSystem>();
         m_activeScene->addSystem<ScriptInitializationSystem>(m_activeScene->getSystem<ScriptSystem>()->getGlobalEnvironment());

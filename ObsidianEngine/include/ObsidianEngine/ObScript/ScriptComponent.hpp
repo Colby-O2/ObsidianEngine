@@ -14,6 +14,7 @@ namespace ObsidianEngine
 	{
 		std::string scriptTypeName;
 		std::unordered_map<std::string, ScriptValue> properties;
+		std::unordered_map<std::string, ScriptValue> fileEnvironment;
 		std::string sourceScriptPath;
 
 		bool isInitialized = false;

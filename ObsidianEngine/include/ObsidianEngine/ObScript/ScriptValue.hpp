@@ -48,14 +48,33 @@ namespace ObsidianEngine
 		String,
 		Function,
 		NativeFunction,
-		ComponentRef
+		ComponentRef,
+		ComponentDef
+	};
+
+	struct ScriptComponentDef
+	{
+		std::string name;
+		std::unordered_map<std::string, ScriptValue> methods;
+		std::unordered_map<std::string, ScriptValue> defaultProperties;
+		std::shared_ptr<Chunk> initChunk;
 	};
 
 	struct ScriptValue
 	{
 		ScriptValueType type = ScriptValueType::Nil;
 
-		std::variant<std::monostate, bool, double, std::string, std::shared_ptr<ScriptFunction>, std::shared_ptr<ScriptNativeFunction>, std::shared_ptr<ScriptComponentRef>> data;
+		std::variant
+		<
+			std::monostate, 
+			bool, 
+			double, 
+			std::string, 
+			std::shared_ptr<ScriptFunction>, 
+			std::shared_ptr<ScriptNativeFunction>, 
+			std::shared_ptr<ScriptComponentRef>, 
+			std::shared_ptr<ScriptComponentDef>
+		> data;
 
 		ScriptValue() : type(ScriptValueType::Nil), data(std::monostate{}) {}
 		ScriptValue(bool b) : type(ScriptValueType::Boolean), data(b) {}
@@ -64,6 +83,7 @@ namespace ObsidianEngine
 		ScriptValue(std::shared_ptr<ScriptFunction> f) : type(ScriptValueType::Function), data(f) {}
 		ScriptValue(std::shared_ptr<ScriptNativeFunction> f) : type(ScriptValueType::NativeFunction), data(f) {}
 		ScriptValue(std::shared_ptr<ScriptComponentRef> c) : type(ScriptValueType::ComponentRef), data(c) {}
+		ScriptValue(std::shared_ptr<ScriptComponentDef> c) : type(ScriptValueType::ComponentDef), data(c) {}
 	};
 }
 

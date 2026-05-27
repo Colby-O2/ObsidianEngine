@@ -91,6 +91,45 @@ namespace ObsidianEngine
 				emitOp(Opcode::Store);
                 emitByte(idx);
 			}
+			else if (auto* assign = dynamic_cast<AssignmentExpr*>(node))
+			{
+				if (assign->op != "=")
+				{
+					emitNode(assign->target.get());
+					emitNode(assign->value.get());
+					if (assign->op == "+=") emitOp(Opcode::Add);
+					else if (assign->op == "-=") emitOp(Opcode::Subtract);
+					else if (assign->op == "*=") emitOp(Opcode::Multiply);
+					else if (assign->op == "/=") emitOp(Opcode::Divide);
+					else if (assign->op == "%=") emitOp(Opcode::Modulus);
+				}
+				else
+				{
+					emitNode(assign->value.get());
+				}
+
+				if (auto* memAccess = dynamic_cast<MemberAccessExpr*>(assign->target.get()))
+				{
+					if (auto* varExpr = dynamic_cast<VariableExpr*>(memAccess->object.get()); varExpr && varExpr->name == "self") 
+					{
+						emitOp(Opcode::LoadSelf);
+					}
+					else
+					{
+						emitNode(memAccess->object.get());
+					}
+
+					size_t propIdx = addConstant(ScriptValue(memAccess->propertyName));
+					emitOp(Opcode::SetProperty);
+					emitByte(propIdx);
+				}
+				else if (auto* var = dynamic_cast<VariableExpr*>(assign->target.get()))
+				{
+					size_t idx = addConstant(ScriptValue(var->name));
+					emitOp(Opcode::Store);
+					emitByte(idx);
+				}
+			}
 			else if (auto* var = dynamic_cast<VariableExpr*>(node))
 			{
 				size_t idx = addConstant(ScriptValue(var->name));
@@ -122,21 +161,113 @@ namespace ObsidianEngine
 					emitNode(stmt.get());
 				}
 			}
-			else if(auto* formula = dynamic_cast<FormulaExpr*>(node))
+			else if (auto* compDecl = dynamic_cast<ComponentDeclNode*>(node))
+			{
+				auto compDef = std::make_shared<ScriptComponentDef>();
+				compDef->name = compDecl->name;
+
+				auto parentChunk = m_currentChunk;
+				auto initChunk = std::make_shared<Chunk>();
+
+				if (auto* block = dynamic_cast<ScriptBlockNode*>(compDecl->body.get()))
+				{
+					for (const auto& stmt : block->statements)
+					{
+						if (auto* funcDecl = dynamic_cast<FunctionDeclNode*>(stmt.get()))
+						{
+							m_currentChunk = std::make_shared<Chunk>();
+
+							emitNode(funcDecl->body.get());
+							if (m_currentChunk->bytecode.empty() || m_currentChunk->bytecode.back() != static_cast<uint8_t>(Opcode::Return))
+							{
+								emitOp(Opcode::Return);
+							}
+
+							auto function = std::make_shared<ScriptFunction>();
+							function->name = funcDecl->name;
+							function->parameterNames = funcDecl->parameters;
+							function->chunk = m_currentChunk;
+
+							compDef->methods[funcDecl->name] = ScriptValue(function);
+						}
+						else if (auto* varDecl = dynamic_cast<VarDeclarationNode*>(stmt.get()))
+						{
+							m_currentChunk = initChunk;
+
+							compDef->defaultProperties[varDecl->identifierName] = ScriptValue();
+
+							if (varDecl->initializerExpr)
+							{
+								emitNode(varDecl->initializerExpr.get());
+							}
+							else
+							{
+								size_t nilIdx = addConstant(ScriptValue());
+								emitOp(Opcode::Constant);
+								emitByte(nilIdx);
+							}
+
+							size_t nameIdx = addConstant(ScriptValue(varDecl->identifierName));
+							emitOp(Opcode::Store);
+							emitByte(nameIdx);
+						}
+					}
+				}
+
+				m_currentChunk = initChunk;
+				if (m_currentChunk->bytecode.empty() || m_currentChunk->bytecode.back() != static_cast<uint8_t>(Opcode::Return))
+				{
+					emitOp(Opcode::Return);
+				}
+				compDef->initChunk = initChunk;
+
+				m_currentChunk = parentChunk;
+
+				size_t idx = addConstant(ScriptValue(compDef));
+				emitOp(Opcode::Constant);
+				emitByte(idx);
+
+				size_t nameIdx = addConstant(ScriptValue(compDecl->name));
+				emitOp(Opcode::Store);
+				emitByte(nameIdx);
+			}
+			else if (auto* memAccess = dynamic_cast<MemberAccessExpr*>(node))
+			{
+				if (auto* varExpr = dynamic_cast<VariableExpr*>(memAccess->object.get())) 
+				{
+					if (varExpr->name == "self") 
+					{
+						emitOp(Opcode::LoadSelf);
+					}
+					else
+					{
+						emitNode(memAccess->object.get());
+					}
+				}
+				else
+				{
+					emitNode(memAccess->object.get());
+				}
+
+				size_t propIdx = addConstant(ScriptValue(memAccess->propertyName));
+				emitOp(Opcode::GetProperty);
+				emitByte(propIdx);
+			}
+			else if(auto* funcDecl = dynamic_cast<FunctionDeclNode*>(node))
 			{
 				//emitNode(formula->body.get());
 				auto parnetChunk = m_currentChunk;
 
 				m_currentChunk = std::make_shared<Chunk>();
 
-				emitNode(formula->body.get());
+				emitNode(funcDecl->body.get());
 				if (m_currentChunk->bytecode.empty() || m_currentChunk->bytecode.back() != static_cast<uint8_t>(Opcode::Return))
 				{
 					emitOp(Opcode::Return);
 				}
 
 				auto function = std::make_shared<ScriptFunction>();
-				function->parameterNames = formula->parameters;
+				function->parameterNames = funcDecl->parameters;
 				function->chunk = m_currentChunk;
 
 				m_currentChunk = parnetChunk;
@@ -144,6 +275,10 @@ namespace ObsidianEngine
 
 				emitOp(Opcode::Constant);
 				emitByte(idx);
+
+				size_t nameIdx = addConstant(ScriptValue(funcDecl->name));
+				emitOp(Opcode::Store);
+				emitByte(nameIdx);
 			}
 			else if (auto* ifElse = dynamic_cast<IfElseExpr*>(node))
 			{

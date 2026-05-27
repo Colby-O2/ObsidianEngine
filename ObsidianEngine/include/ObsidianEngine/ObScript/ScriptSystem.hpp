@@ -80,9 +80,15 @@ namespace ObsidianEngine
 
                     VirtualMachine vm;
 
+                    auto selfRef = std::make_shared<ScriptComponentRef>();
+                    selfRef->kind = ScriptComponentRef::Kind::Script;
+                    selfRef->componentName = script.scriptTypeName;
+                    selfRef->owner = entity;
+                    selfRef->scriptProperties = &script.properties;
+
                     try
                     {
-                        vm.call("Update", args, script.properties, m_globalEnvironment);
+                        vm.call("Update", args, script.properties, script.fileEnvironment, m_globalEnvironment, selfRef);
                     }
                     catch (const std::runtime_error& error)
                     {
@@ -223,7 +229,7 @@ namespace ObsidianEngine
                 for (auto& script : scriptComp.scripts)
                 {
                     if (script.isInitialized) continue;
-                    InitializeScript(script);
+                    InitializeScript(script, entity);
                 }
             }
         }
@@ -231,12 +237,8 @@ namespace ObsidianEngine
     private:
         const std::unordered_map<std::string, ScriptValue>& m_globalEnvironment;
 
-        void InitializeScript(Script& script)
+        void InitializeScript(Script& script, EntityID entity)
         {
-            if (script.rawSourceCode.empty() && !script.sourceScriptPath.empty())
-            {
-                // TODO: Load 
-            }
             try
             {
                 Lexer lexer;
@@ -245,24 +247,55 @@ namespace ObsidianEngine
                 Parser parser(tokens);
                 auto astRoot = parser.parse();
 
-                astRoot->print();
-
                 Compiler compiler;
                 std::shared_ptr<Chunk> compiledChunk = compiler.compile(astRoot.get());
 
                 VirtualMachine initVM;
-                initVM.run(compiledChunk, script.properties, m_globalEnvironment);
-                 
-                initVM.call("Start", {}, script.properties, m_globalEnvironment);
+                initVM.run(compiledChunk, script.fileEnvironment, m_globalEnvironment);
+
+                auto it = script.fileEnvironment.find(script.scriptTypeName);
+                if (it != script.fileEnvironment.end() && it->second.type == ScriptValueType::ComponentDef)
+                {
+                    auto compDef = std::get<std::shared_ptr<ScriptComponentDef>>(it->second.data);
+
+                    script.fileEnvironment.erase(script.scriptTypeName);
+
+                    script.properties.clear();
+                    for (const auto& [name, dummyVal] : compDef->defaultProperties)
+                    {
+                        script.properties[name] = ScriptValue();
+                    }
+
+                    VirtualMachine allocatorVM;
+                    VirtualMachine::Environment temporaryFrame;
+                    allocatorVM.run(compDef->initChunk, temporaryFrame, script.properties, m_globalEnvironment);
+
+                    for (const auto& [methodName, methodBody] : compDef->methods)
+                    {
+                        script.properties[methodName] = methodBody;
+                    }
+
+                    script.properties["entity"] = ScriptValue(static_cast<double>(entity));
+                }
+                else
+                {
+                    throw std::runtime_error("Could not find component definition matching: " + script.scriptTypeName);
+                }
+
+                auto selfRef = std::make_shared<ScriptComponentRef>();
+                selfRef->kind = ScriptComponentRef::Kind::Script;
+                selfRef->componentName = script.scriptTypeName;
+                selfRef->owner = entity;
+                selfRef->scriptProperties = &script.properties;
+
+                initVM.call("Start", {}, script.properties, script.fileEnvironment, m_globalEnvironment, selfRef);
 
                 script.isInitialized = true;
-
                 script.rawSourceCode.clear();
             }
             catch (const std::runtime_error& error)
             {
-                std::cerr << "Compilation/Initialization Failed for script " << script.scriptTypeName << ": " << error.what() << std::endl;
-
+                std::cerr << "Initialization Failed: " << error.what() << std::endl;
                 script.isInitialized = true;
             }
         }

@@ -17,6 +17,8 @@ namespace ObsidianEngine
 
 		Jump, JumpIfFalse,
 
+		LoadSelf, GetProperty, SetProperty,
+
 		Return, Call
 	};
 

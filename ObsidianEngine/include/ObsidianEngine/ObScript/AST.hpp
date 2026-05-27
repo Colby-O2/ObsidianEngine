@@ -143,7 +143,13 @@ namespace ObsidianEngine
 		void print(int depth) const override
 		{
 			printIndent(depth);
-			std::cout << "FunctionDecl " << (isGlobal ? "[Global] " : "") << name << "()\n";
+			std::cout << "FunctionDecl " << (isGlobal ? "[Global] " : "") << name << "(";
+			for (int i = 0; i < parameters.size(); ++i)
+			{
+				const auto& p = parameters[i];
+				std::cout << p << ((i == parameters.size() - 1) ? "" : ", ");
+			}
+			std::cout << ")\n";
 			body->print(depth + 1);
 		}
 	};
@@ -268,23 +274,6 @@ namespace ObsidianEngine
 				printIndent(depth + 1); std::cout << "Else:\n";
 				elseBranch->print(depth + 2);
 			}
-		}
-	};
-
-	struct FormulaExpr : public ASTNode 
-	{
-		std::vector<std::string> parameters;
-		std::unique_ptr<ASTNode> body;
-
-		FormulaExpr(std::vector<std::string> params, std::unique_ptr<ASTNode> b) : parameters(params), body(std::move(b)) {}
-
-		void print(int depth) const override 
-		{
-			printIndent(depth);
-			std::cout << "Formula (Parameters: ";
-			for (const auto& p : parameters) std::cout << p << " ";
-			std::cout << ")\n";
-			body->print(depth + 1);
 		}
 	};
 
