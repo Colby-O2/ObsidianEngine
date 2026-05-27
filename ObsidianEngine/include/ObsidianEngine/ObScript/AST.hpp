@@ -84,17 +84,97 @@ namespace ObsidianEngine
 	{
 		std::string identifierName;
 		std::unique_ptr<ASTNode> initializerExpr;
+		bool isGlobal;
 
-		VarDeclarationNode(std::string name, std::unique_ptr<ASTNode> init) : identifierName(name), initializerExpr(std::move(init)) {}
+		VarDeclarationNode(std::string name, std::unique_ptr<ASTNode> init, bool isGlobal = false) : identifierName(name), initializerExpr(std::move(init)), isGlobal(isGlobal) {}
 
 		void print(int depth) const override 
 		{
 			printIndent(depth);
-			std::cout << "VarDeclaration [let " << identifierName << " = ]\n";
+			std::cout << "VarDeclaration [" << (isGlobal ? "global " : "let ") << identifierName << " = ]\n";
 			if (initializerExpr) 
 			{
 				initializerExpr->print(depth + 1);
 			}
+		}
+	};
+
+	struct AssignmentExpr : public ASTNode
+	{
+		std::unique_ptr<ASTNode> target;
+		std::string op;
+		std::unique_ptr<ASTNode> value;
+
+		AssignmentExpr(std::unique_ptr<ASTNode> target, std::string op, std::unique_ptr<ASTNode> value) : target(std::move(target)), op(op), value(std::move(value)) {}
+
+		void print(int depth) const override
+		{
+			printIndent(depth);
+			std::cout << "AssignmentExpr (" << op << ")\n";
+			target->print(depth + 1);
+			value->print(depth + 1);
+		}
+	};
+
+	struct MemberAccessExpr : public ASTNode
+	{
+		std::unique_ptr<ASTNode> object;
+		std::string propertyName;
+
+		MemberAccessExpr(std::unique_ptr<ASTNode> object, std::string propertyName): object(std::move(object)), propertyName(propertyName) {}
+
+		void print(int depth) const override
+		{
+			printIndent(depth);
+			std::cout << "MemberAccess (." << propertyName << ")\n";
+			object->print(depth + 1);
+		}
+	};
+
+	struct FunctionDeclNode : public ASTNode
+	{
+		std::string name;
+		std::vector<std::string> parameters;
+		std::unique_ptr<ASTNode> body;
+		bool isGlobal;
+
+		FunctionDeclNode(std::string name, std::vector<std::string> params, std::unique_ptr<ASTNode> body, bool isGlobal = false) : name(name), parameters(params), body(std::move(body)), isGlobal(isGlobal) {}
+
+		void print(int depth) const override
+		{
+			printIndent(depth);
+			std::cout << "FunctionDecl " << (isGlobal ? "[Global] " : "") << name << "()\n";
+			body->print(depth + 1);
+		}
+	};
+
+	struct StructDeclNode : public ASTNode
+	{
+		std::string name;
+		std::unique_ptr<ASTNode> body;
+
+		StructDeclNode(std::string name, std::unique_ptr<ASTNode> body) : name(name), body(std::move(body)) {}
+
+		void print(int depth) const override
+		{
+			printIndent(depth);
+			std::cout << "StructDecl: " << name << "\n";
+			body->print(depth + 1);
+		}
+	};
+
+	struct ComponentDeclNode : public ASTNode
+	{
+		std::string name;
+		std::unique_ptr<ASTNode> body;
+
+		ComponentDeclNode(std::string name, std::unique_ptr<ASTNode> body) : name(name), body(std::move(body)) {}
+
+		void print(int depth) const override
+		{
+			printIndent(depth);
+			std::cout << "ComponentDecl: " << name << "\n";
+			body->print(depth + 1);
 		}
 	};
 

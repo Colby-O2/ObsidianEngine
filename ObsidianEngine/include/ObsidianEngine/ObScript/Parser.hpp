@@ -38,10 +38,21 @@ namespace ObsidianEngine
 
 		std::unique_ptr<ASTNode> statement()
 		{
-			if (match({ TokenType::Let }))
+			bool isGlobal = match({ TokenType::Global });
+
+			if (match({ TokenType::Fn })) return functionDeclaration(isGlobal);
+
+			if (isGlobal)
 			{
-				return declarationStatement();
+				consume(TokenType::Identifier, "Expected variable name after 'global'.");
+				std::string varName = previous().lexeme;
+				consume(TokenType::Equal, "Expected '=' after global variable declaration.");
+				return std::make_unique<VarDeclarationNode>(varName, expression(), true);
 			}
+
+			if (match({ TokenType::Struct })) return structDeclaration();
+			if (match({ TokenType::Component })) return componentDeclaration();
+			if (match({ TokenType::Let })) return declarationStatement();
 
 			if (match({ TokenType::Return }))
 			{
@@ -51,36 +62,49 @@ namespace ObsidianEngine
 			return expression();
 		}
 
+		std::unique_ptr<ASTNode> functionDeclaration(bool isGlobal)
+		{
+			Token nameToken = consume(TokenType::Identifier, "Expected function name.");
+			std::string fnName = nameToken.lexeme;
+
+			consume(TokenType::LeftParen, "Expected '(' after function name.");
+			std::vector<std::string> parameters;
+			if (!check(TokenType::RightParen))
+			{
+				do {
+					parameters.push_back(consume(TokenType::Identifier, "Expected parameter name.").lexeme);
+				} while (match({ TokenType::Comma }));
+			}
+			consume(TokenType::RightParen, "Expected ')' after parameters.");
+
+			auto body = blockBody();
+			return std::make_unique<FunctionDeclNode>(fnName, parameters, std::move(body), isGlobal);
+		}
+
+		std::unique_ptr<ASTNode> structDeclaration()
+		{
+			Token nameToken = consume(TokenType::Identifier, "Expected struct name.");
+			return std::make_unique<StructDeclNode>(nameToken.lexeme, blockBody());
+		}
+
+		std::unique_ptr<ASTNode> componentDeclaration()
+		{
+			Token nameToken = consume(TokenType::Identifier, "Expected component name.");
+			return std::make_unique<ComponentDeclNode>(nameToken.lexeme, blockBody());
+		}
+
 		std::unique_ptr<ASTNode> declarationStatement()
 		{
 			Token nameToken = consume(TokenType::Identifier, "Expected variable name after 'let'.");
 			std::string varName = nameToken.lexeme;
 
-			std::vector<std::string> parameters;
-			while (check(TokenType::Identifier))
+			std::unique_ptr<ASTNode> initializer = nullptr;
+			if (match({ TokenType::Equal }))
 			{
-				parameters.push_back(advance().lexeme);
+				initializer = expression();
 			}
 
-			if (match({ TokenType::Arrow })) 
-			{
-				auto body = blockBody();
-				return std::make_unique<VarDeclarationNode>(varName, std::make_unique<FormulaExpr>(parameters, std::move(body)));
-			}
-			else if (match({ TokenType::Equal })) 
-			{
-				auto initializer = expression();
-
-				//if (check(TokenType::End))
-				//{
-				//	advance();
-				//}
-
-				return std::make_unique<VarDeclarationNode>(varName, std::move(initializer));
-			}
-
-			throw std::runtime_error("Expected '=' or '->' after variable declaration naming.");
-			//throw std::runtime_error("Expected '=' or '->' after variable declaration naming.");
+			return std::make_unique<VarDeclarationNode>(varName, std::move(initializer), false);
 		}
 
 		std::unique_ptr<ASTNode> blockBody()
@@ -96,43 +120,23 @@ namespace ObsidianEngine
 
 		std::unique_ptr<ASTNode> expression()
 		{
-			if (match({ TokenType::If }))
-			{
-				return ifExpression();
-			}
-
-			if (check(TokenType::Identifier) && isNextTokenAnArgument())
-			{
-				return call();
-			}
-
-			return equality();
+			if (match({ TokenType::If })) return ifExpression();
+			return assignment();
 		}
 
-		std::unique_ptr<ASTNode> call()
+		std::unique_ptr<ASTNode> assignment()
 		{
-			Token nameToken = consume(TokenType::Identifier, "Expected function name.");
-			auto callee = std::make_unique<VariableExpr>(nameToken.lexeme);
+			auto expr = equality();
 
-			std::vector<std::unique_ptr<ASTNode>> arguments;
-
-			int currentLine = previous().line;
-
-			while 
-			(
-				!isAtEnd() &&
-				peek().line == currentLine &&
-				!check(TokenType::End) &&
-				!check(TokenType::Else) &&
-				!check(TokenType::Elif) &&
-				!check(TokenType::Return) &&
-				!check(TokenType::Let)
-			)
+			if (match({ TokenType::Equal, TokenType::PlusEqual, TokenType::MinusEqual,
+						TokenType::StarEqual, TokenType::SlashEqual, TokenType::ModulusEqual }))
 			{
-				arguments.push_back(equality());
+				std::string op = previous().lexeme;
+				auto value = assignment();
+				return std::make_unique<AssignmentExpr>(std::move(expr), op, std::move(value));
 			}
 
-			return std::make_unique<CallExpr>(std::move(callee), std::move(arguments));
+			return expr;
 		}
 
 		std::unique_ptr<ASTNode> ifExpression()
@@ -221,7 +225,39 @@ namespace ObsidianEngine
 				return std::make_unique<UnaryExpr>(op, std::move(right));
 			}
 
-			return primary();
+			return callAndMemberAccess();
+		}
+
+		std::unique_ptr<ASTNode> callAndMemberAccess()
+		{
+			auto expr = primary();
+
+			while (true)
+			{
+				if (match({ TokenType::LeftParen }))
+				{
+					std::vector<std::unique_ptr<ASTNode>> args;
+					if (!check(TokenType::RightParen))
+					{
+						do {
+							args.push_back(expression());
+						} while (match({ TokenType::Comma }));
+					}
+					consume(TokenType::RightParen, "Expected ')' after arguments.");
+					expr = std::make_unique<CallExpr>(std::move(expr), std::move(args));
+				}
+				else if (match({ TokenType::Dot }))
+				{
+					Token prop = consume(TokenType::Identifier, "Expected property name after '.'.");
+					expr = std::make_unique<MemberAccessExpr>(std::move(expr), prop.lexeme);
+				}
+				else
+				{
+					break;
+				}
+			}
+
+			return expr;
 		}
 
 		std::unique_ptr<ASTNode> primary()
@@ -243,7 +279,7 @@ namespace ObsidianEngine
 				return std::make_unique<BooleanExpr>(false);
 			}
 
-			if (match({ TokenType::Identifier }))
+			if (match({ TokenType::Identifier, TokenType::Self }))
 			{
 				return std::make_unique<VariableExpr>(previous().lexeme);
 			}

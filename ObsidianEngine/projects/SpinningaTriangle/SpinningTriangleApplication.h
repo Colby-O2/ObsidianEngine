@@ -136,6 +136,10 @@ protected:
                 end
             end
 
+            fn foo2()
+               log("Helper Func")
+            end
+
             component FPSComponent
                 # let only assessable from within this component
                 let timer = 0.0
@@ -152,30 +156,31 @@ protected:
 
                 # function are local by default 
                 fn Update(dt)
-                    self.timer += dt
+                    log("At Update")
+                    #self.timer += dt
         
-                    foo()
+                    #foo()
 
-                    if self.timer > self.interval then 
-	                    let fps = 1.0 / dt
-	                    log("FPS: ", fps)
-                        timer = 0.0
+                    #if self.timer > self.interval then 
+	                    #let fps = 1.0 / dt
+	                    #log("FPS: ", fps)
+                        #timer = 0.0
+                        #log(fps)
+                        #log("This belongs to entity", self.entity, ".")
 
-                        log("This belongs to entity", self.entity, ".")
+                        #let healthComp = self.GetComponent("HealthComponent")
+                        #let currentHp = healthComp.hp
+                        #log("HP: ", currentHp)
 
-                        let healthComp = self.GetComponent("HealthComponent")
-                        let currentHp = healthComp.hp
-                        log("HP: ", currentHp)
-
-                        if currentHp < 0.0 then
-                              healthComp.hp = 100.0
-                              log("ResetHp to 100")
-	                    elif self.interval == 2 then
-	                          log("Foo")
-                        else
-                              log("Foo2") 
-                        end
-                    end
+                        #if currentHp < 0.0 then
+                        #      healthComp.hp = 100.0
+                        #      log("ResetHp to 100")
+	                    #elif self.interval == 2 then
+	                    #      log("Foo")
+                        #else
+                        #      log("Foo2") 
+                        #end
+                    #end
                 end
             end
         )yo";
@@ -186,9 +191,9 @@ protected:
 
         Script fpsComp;
         fpsComp.scriptTypeName = "FPSComponent";
-        fpsComp.rawSourceCode = srcFPS;
+        fpsComp.rawSourceCode = newSrc;
 
-        ScriptComponent playerScripts{ healthComp, fpsComp };
+        ScriptComponent playerScripts{ fpsComp };
 
         m_activeScene->getRegistry().addComponent<ScriptComponent>(player, playerScripts);
 

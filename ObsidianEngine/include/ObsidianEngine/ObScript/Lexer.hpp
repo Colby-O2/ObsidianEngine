@@ -18,8 +18,12 @@ namespace ObsidianEngine
 		
 		Arrow, Not, NotEqual, EqualEqual, Greater, GreaterEqual, Less, LessEqual, 
 
+		Dot, PlusEqual, MinusEqual, StarEqual, SlashEqual, ModulusEqual, Comma,
+
 		// Keywords
 		Let, If, Elif, Else, Then, True, False, End, Return,
+
+		Struct, Component, Global, Fn, Self,
 
 		EOFToken, Unknown
 	};
@@ -47,6 +51,13 @@ namespace ObsidianEngine
 			case TokenType::GreaterEqual: return "GREATEREQUAL";
 			case TokenType::Less: return "LESS";
 			case TokenType::LessEqual: return "LESSEQUAL";
+			case TokenType::Dot: return "DOT";
+			case TokenType::PlusEqual: return "PLUSEQUAL";
+			case TokenType::MinusEqual: return "MINUSEQUAL";
+			case TokenType::StarEqual: return "STAREQUAL";
+			case TokenType::SlashEqual: return "SLASHEQUAL";
+			case TokenType::ModulusEqual: return "MODULUSEQUAL";
+			case TokenType::Comma: return "COMMA";
 
 			case TokenType::Let: return "LET";
 			case TokenType::If: return "IF";
@@ -57,6 +68,11 @@ namespace ObsidianEngine
 			case TokenType::False: return "FALSE";
 			case TokenType::End: return "END";
 			case TokenType::Return: return "RETURN";
+			case TokenType::Struct: return "STRUCT";
+			case TokenType::Component: return "COMPONENT";
+			case TokenType::Global: return "GLOBAL";
+			case TokenType::Fn: return "FN";
+			case TokenType::Self: return "SELF";
 
 			case TokenType::EOFToken: return "EOF";
 
@@ -157,23 +173,55 @@ namespace ObsidianEngine
 				}
 				else if (currentChar == '/')
 				{
-					tokens.push_back(Token(TokenType::Slash, "/", m_line));
-					m_ptr++;
+					if (peek() == '=')
+					{
+						tokens.push_back(Token(TokenType::SlashEqual, "/=", m_line));
+						m_ptr += 2;
+					}
+					else
+					{
+						tokens.push_back(Token(TokenType::Slash, "/", m_line));
+						m_ptr++;
+					}
 				}
 				else if (currentChar == '%')
 				{
-					tokens.push_back(Token(TokenType::Modulus, "%", m_line));
-					m_ptr++;
+					if (peek() == '=')
+					{
+						tokens.push_back(Token(TokenType::ModulusEqual, "%=", m_line));
+						m_ptr += 2;
+					}
+					else
+					{
+						tokens.push_back(Token(TokenType::Modulus, "%", m_line));
+						m_ptr++;
+					}
 				}
 				else if (currentChar == '+')
 				{
-					tokens.push_back(Token(TokenType::Plus, "+", m_line));
-					m_ptr++;
+					if (peek() == '=')
+					{
+						tokens.push_back(Token(TokenType::PlusEqual, "+=", m_line));
+						m_ptr += 2;
+					}
+					else
+					{
+						tokens.push_back(Token(TokenType::Plus, "+", m_line));
+						m_ptr++;
+					}
 				}
 				else if (currentChar == '*')
 				{
-					tokens.push_back(Token(TokenType::Star, "*", m_line));
-					m_ptr++;
+					if (peek() == '=')
+					{
+						tokens.push_back(Token(TokenType::StarEqual, "*=", m_line));
+						m_ptr += 2;
+					}
+					else
+					{
+						tokens.push_back(Token(TokenType::Star, "*", m_line));
+						m_ptr++;
+					}
 				}
 				else if (currentChar == '(')
 				{
@@ -185,6 +233,16 @@ namespace ObsidianEngine
 					tokens.push_back(Token(TokenType::RightParen, ")", m_line));
 					m_ptr++;
 				}
+				else if (currentChar == '.')
+				{
+					tokens.push_back(Token(TokenType::Dot, ".", m_line));
+					m_ptr++;
+				}
+				else if (currentChar == ',')
+				{
+					tokens.push_back(Token(TokenType::Comma, ",", m_line));
+					m_ptr++;
+				}
 				else if (currentChar == '-')
 				{
 					if (peek() == '>')
@@ -192,11 +250,21 @@ namespace ObsidianEngine
 						tokens.push_back(Token(TokenType::Arrow, "->", m_line));
 						m_ptr += 2;
 					}
+					else if (peek() == '=')
+					{
+						tokens.push_back(Token(TokenType::MinusEqual, "-=", m_line));
+						m_ptr += 2;
+					}
 					else
 					{
 						tokens.push_back(Token(TokenType::Minus, "-", m_line));
 						m_ptr++;
 					}
+				}
+				else if (currentChar == '#')
+				{
+					skipLine();
+					continue;
 				}
 				else if (std::isdigit(currentChar))
 				{
@@ -235,6 +303,14 @@ namespace ObsidianEngine
 				{
 					m_line++;
 				}
+				m_ptr++;
+			}
+		}
+
+		void skipLine()
+		{
+			while (m_ptr < m_script.length() && m_script[m_ptr] != '\n')
+			{
 				m_ptr++;
 			}
 		}
@@ -304,6 +380,11 @@ namespace ObsidianEngine
 			if (lexeme == "false") return { TokenType::False, lexeme, m_line };
 			if (lexeme == "end") return { TokenType::End, lexeme, m_line };
 			if (lexeme == "return") return { TokenType::Return, lexeme, m_line };
+			if (lexeme == "struct") return { TokenType::Struct, lexeme, m_line };
+			if (lexeme == "component") return { TokenType::Component, lexeme, m_line };
+			if (lexeme == "global") return { TokenType::Global, lexeme, m_line };
+			if (lexeme == "fn") return { TokenType::Fn, lexeme, m_line };
+			if (lexeme == "self") return { TokenType::Self, lexeme, m_line };
 
 			return { TokenType::Identifier, lexeme, m_line };
 		}
